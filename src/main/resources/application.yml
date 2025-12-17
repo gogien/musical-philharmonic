@@ -18,3 +18,9 @@ spring:
 server:
   port: 8080
 
+security:
+  jwt:
+    # 256-bit base64 secret; replace for production
+    secret: ZmFrZS1yZXBsYWNlLW1lLXdpdGgtYS1zaWduaW5nLWtleS0xMjM0NTY=
+    expiration-ms: 3600000
+
