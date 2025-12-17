@@ -8,6 +8,10 @@ import org.app.musical_philharmonic.entity.Role;
 import org.app.musical_philharmonic.entity.User;
 import org.app.musical_philharmonic.repository.UserRepository;
 import org.app.musical_philharmonic.security.JwtService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,6 +26,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -40,6 +45,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register new user and set auth cookie")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             return ResponseEntity.status(409).body(new AuthResponse("Email already registered"));
@@ -58,10 +64,11 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
         String token = jwtService.generateToken(claims, user.getEmail());
-        return ResponseEntity.ok(new AuthResponse(token, user.getName()));
+        return withCookie(token, user.getName());
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Login and set auth cookie")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
         UsernamePasswordAuthenticationToken authToken =
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword());
@@ -73,7 +80,20 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
         String token = jwtService.generateToken(claims, user.getEmail());
-        return ResponseEntity.ok(new AuthResponse(token, user.getName()));
+        return withCookie(token, user.getName());
+    }
+
+    private ResponseEntity<AuthResponse> withCookie(String token, String name) {
+        ResponseCookie cookie = ResponseCookie.from("JWT", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(jwtService.getExpirationSeconds())
+                .sameSite("Lax")
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(new AuthResponse(token, name));
     }
 }
 

@@ -24,5 +24,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
 
     @Query("select t from Ticket t where t.status = 'RESERVED' and t.reservationExpiration < :cutoff")
     List<Ticket> findExpiredReservations(@Param("cutoff") LocalDateTime cutoff);
+
+    boolean existsByConcertIdAndSeatNumberAndStatusIn(Integer concertId, String seatNumber, java.util.Collection<TicketStatus> statuses);
+
+    Page<Ticket> findByConcertIdAndStatus(Integer concertId, TicketStatus status, Pageable pageable);
+
+    Page<Ticket> findByPurchaseTimestampBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
 }
 

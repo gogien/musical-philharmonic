@@ -2,6 +2,7 @@ package org.app.musical_philharmonic.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,12 +34,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String tokenFromHeader = (authHeader != null && authHeader.startsWith("Bearer "))
+                ? authHeader.substring(7)
+                : null;
+        String tokenFromCookie = null;
+        if (request.getCookies() != null) {
+            for (Cookie c : request.getCookies()) {
+                if ("JWT".equals(c.getName())) {
+                    tokenFromCookie = c.getValue();
+                    break;
+                }
+            }
+        }
+
+        jwt = tokenFromHeader != null ? tokenFromHeader : tokenFromCookie;
+        if (jwt == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
         username = jwtService.extractUsername(jwt);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);

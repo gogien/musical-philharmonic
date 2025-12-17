@@ -22,6 +22,12 @@ public class TicketRequest {
 
     private LocalDateTime reservationExpiration;
 
+    private String paymentMethod;
+
+    private String returnReason;
+
+    private LocalDateTime returnTime;
+
     public Integer getConcertId() {
         return concertId;
     }
@@ -60,6 +66,30 @@ public class TicketRequest {
 
     public void setReservationExpiration(LocalDateTime reservationExpiration) {
         this.reservationExpiration = reservationExpiration;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public String getReturnReason() {
+        return returnReason;
+    }
+
+    public void setReturnReason(String returnReason) {
+        this.returnReason = returnReason;
+    }
+
+    public LocalDateTime getReturnTime() {
+        return returnTime;
+    }
+
+    public void setReturnTime(LocalDateTime returnTime) {
+        this.returnTime = returnTime;
     }
 }
 

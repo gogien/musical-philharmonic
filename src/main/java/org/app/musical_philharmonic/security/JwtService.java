@@ -68,5 +68,9 @@ public class JwtService {
         }
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    public long getExpirationSeconds() {
+        return expirationMs / 1000;
+    }
 }
 

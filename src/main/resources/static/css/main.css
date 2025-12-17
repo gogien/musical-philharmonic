@@ -3,7 +3,6 @@
     --bg-soft: #121836;
     --card: #ffffff;
     --text: #0f172a;
-    --muted: #4b5563;
     --accent: #c42032;
     --accent-2: #f4b400;
     --radius: 16px;
@@ -157,6 +156,7 @@ header {
 
 .auth-box h2 {
     margin: 0 0 8px;
+    color: black;
 }
 
 .auth-box .muted {

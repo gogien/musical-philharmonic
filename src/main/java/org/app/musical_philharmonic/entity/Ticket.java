@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -43,6 +44,15 @@ public class Ticket {
 
     @Column(name = "reservation_expiration")
     private LocalDateTime reservationExpiration;
+
+    @Column(name = "payment_method", length = 20)
+    private String paymentMethod;
+
+    @Column(name = "return_reason", length = 255)
+    private String returnReason;
+
+    @Column(name = "return_time")
+    private LocalDateTime returnTime;
 
     @PrePersist
     protected void onPurchase() {
@@ -105,6 +115,30 @@ public class Ticket {
 
     public void setReservationExpiration(LocalDateTime reservationExpiration) {
         this.reservationExpiration = reservationExpiration;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public String getReturnReason() {
+        return returnReason;
+    }
+
+    public void setReturnReason(String returnReason) {
+        this.returnReason = returnReason;
+    }
+
+    public LocalDateTime getReturnTime() {
+        return returnTime;
+    }
+
+    public void setReturnTime(LocalDateTime returnTime) {
+        this.returnTime = returnTime;
     }
 }
 
