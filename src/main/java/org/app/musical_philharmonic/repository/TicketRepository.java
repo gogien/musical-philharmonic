@@ -2,6 +2,8 @@ package org.app.musical_philharmonic.repository;
 
 import org.app.musical_philharmonic.entity.Ticket;
 import org.app.musical_philharmonic.entity.TicketStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,9 +12,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TicketRepository extends JpaRepository<Ticket, Integer> {
-    List<Ticket> findByConcertId(Integer concertId);
-    List<Ticket> findByBuyerId(java.util.UUID buyerId);
-    List<Ticket> findByStatus(TicketStatus status);
+    Page<Ticket> findByConcertId(Integer concertId, Pageable pageable);
+    Page<Ticket> findByBuyerId(java.util.UUID buyerId, Pageable pageable);
+    Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
 
     @Query("select count(t) from Ticket t where t.concert.id = :concertId and t.status = 'SOLD'")
     long countSoldByConcert(@Param("concertId") Integer concertId);
