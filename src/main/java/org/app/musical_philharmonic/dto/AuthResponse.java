@@ -1,8 +1,11 @@
 package org.app.musical_philharmonic.dto;
 
+import org.app.musical_philharmonic.entity.Role;
+
 public class AuthResponse {
     private String token;
     private String name;
+    private Role role;
 
     public AuthResponse() {
     }
@@ -14,6 +17,12 @@ public class AuthResponse {
     public AuthResponse(String token, String name) {
         this.token = token;
         this.name = name;
+    }
+
+    public AuthResponse(String token, String name, Role role) {
+        this.token = token;
+        this.name = name;
+        this.role = role;
     }
 
     public String getToken() {
@@ -30,6 +39,14 @@ public class AuthResponse {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 }
 

@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -64,7 +65,7 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
         String token = jwtService.generateToken(claims, user.getEmail());
-        return withCookie(token, user.getName());
+        return withCookie(token, user.getName(), user.getRole());
     }
 
     @PostMapping("/login")
@@ -80,10 +81,24 @@ public class AuthController {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
         String token = jwtService.generateToken(claims, user.getEmail());
-        return withCookie(token, user.getName());
+        return withCookie(token, user.getName(), user.getRole());
     }
 
-    private ResponseEntity<AuthResponse> withCookie(String token, String name) {
+    @GetMapping("/me")
+    @Operation(summary = "Get current authenticated user info")
+    public ResponseEntity<AuthResponse> me(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).build();
+        }
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        AuthResponse response = new AuthResponse();
+        response.setName(user.getName());
+        response.setRole(user.getRole());
+        return ResponseEntity.ok(response);
+    }
+
+    private ResponseEntity<AuthResponse> withCookie(String token, String name, Role role) {
         ResponseCookie cookie = ResponseCookie.from("JWT", token)
                 .httpOnly(true)
                 .secure(false)
@@ -93,7 +108,7 @@ public class AuthController {
                 .build();
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(new AuthResponse(token, name));
+                .body(new AuthResponse(token, name, role));
     }
 }
 

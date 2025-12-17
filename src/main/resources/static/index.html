@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,85 +18,22 @@
                         <div style="font-size: 12px; color:#cbd5e1;">Live • Concerts • Tickets</div>
                     </div>
                 </div>
-                <nav class="nav">
-                    <a href="#">Афиша</a>
-                    <a href="#">Абонементы</a>
-                    <a href="#">Залы</a>
-                    <a href="/swagger-ui.html">Swagger</a>
+                <nav class="nav" id="main-nav">
+                    <a href="#" onclick="if(window.app) app.navigate('home'); return false;">Главная</a>
                 </nav>
-                <button class="cta" onclick="document.getElementById('auth-form').scrollIntoView({behavior:'smooth'});">
-                    Личный кабинет
-                </button>
+                <div id="user-menu">
+                    <span id="user-name"></span>
+                    <button class="btn-small" id="logout-btn" onclick="app.logout()" style="display:none;">Выйти</button>
+                </div>
             </div>
         </div>
     </header>
 
-    <section class="hero">
-        <div class="shell hero-grid">
-            <div>
-    <div class="card dark">
-                    <div id="greeting" style="margin-bottom: 8px; font-weight: 700; min-height: 20px;"></div>
-                    <h1 class="hero-title">Онлайн-трансляции и концерты</h1>
-                    <p class="hero-sub">Подключайтесь к событиям филармонии, бронируйте места и следите за новыми программами.</p>
-                    <div class="tags">
-                        <span class="tag">Классика</span>
-                        <span class="tag">Джаз</span>
-                        <span class="tag">Live</span>
-                        <span class="tag">Абонементы</span>
-                    </div>
-                    <div style="margin-top: 18px; display:flex; gap:12px; flex-wrap:wrap;">
-                        <a class="cta" href="/swagger-ui.html">API Docs</a>
-                        <a class="cta" style="background:#f4b400;color:#0b1024;" href="/v3/api-docs">OpenAPI JSON</a>
-                    </div>
-                </div>
-            </div>
-            <div>
-                <div class="card auth-box">
-                    <div class="segmented">
-                        <button id="mode-register" class="active" type="button">Регистрация</button>
-                        <button id="mode-login" type="button">Вход</button>
-                    </div>
-                    <h2>Войти или зарегистрироваться</h2>
-                    <form id="auth-form" class="auth-form">
-                        <input id="email" type="email" placeholder="Email" required>
-                        <input id="password" type="password" placeholder="Пароль" required minlength="6">
-                        <input id="name" type="text" placeholder="Имя (только для регистрации)" style="display:none;">
-                        <input id="phone" type="text" placeholder="Телефон (опционально)" style="display:none;">
-                        <button type="submit" class="cta" style="align-self:flex-start;">Отправить</button>
-                    </form>
-                    <!-- <div id="result" class="status" style="display:none;"></div> -->
-                </div>
-            </div>
+    <main class="main-content">
+        <div id="app-content">
+            <!-- Content will be loaded by app.js -->
         </div>
-    </section>
-
-    <section class="schedule">
-        <div class="shell">
-            <h3 class="section-title">Ближайшие события</h3>
-            <div class="grid">
-                <div class="event">
-                    <div class="meta">19:00 • Концертный зал им. П. И. Чайковского</div>
-                    <div class="title">Российский национальный оркестр</div>
-                    <div class="meta">Александр Рудин — дирижер • Равиль Ислямов — скрипка</div>
-                </div>
-                <div class="event">
-                    <div class="meta">19:00 • Филармония-2, Малый зал</div>
-                    <div class="title">Ансамбль Im Spiegel</div>
-                    <div class="meta">Вивальди • Монтеверди • Бриттен</div>
-                </div>
-                <div class="event">
-                    <div class="meta">21:00 • Камерный зал</div>
-                    <div class="title">Иван Наборщиков • Юрий Панов</div>
-                    <div class="meta">Веберн • Прокофьев • Кейдж • Барток</div>
-                </div>
-                <div class="event">
-                    <div class="meta">12:00 • Филармония-2, Малый зал</div>
-                    <div class="title">Новогодний концерт</div>
-                    <div class="meta">Любимые детские песни • Семейная программа</div>
-                </div>
-            </div>
-        </div>
-    </section>
+    </main>
 
     <footer class="footer">
         <div class="shell">
@@ -105,15 +42,12 @@
                     <h4>Контакты</h4>
                     <a href="tel:+74952325353">+7 495 232 53 53</a>
                     <a href="#">Триумфальная площадь, 4</a>
-                    <a href="#">Мичуринский проспект, Олимпийская деревня, 1</a>
                 </div>
                 <div>
                     <h4>Навигация</h4>
-                    <a href="#">Афиша</a>
-                    <a href="#">Абонементы</a>
-                    <a href="#">Концертные залы</a>
+                    <a href="#" onclick="app.navigate('home'); return false;">Главная</a>
                 </div>
-                <div>
+                <div id="swagger-footer" style="display:none;">
                     <h4>Разработчикам</h4>
                     <a href="/swagger-ui.html">Swagger UI</a>
                     <a href="/v3/api-docs">OpenAPI JSON</a>
@@ -122,71 +56,28 @@
         </div>
     </footer>
 </div>
+
+<!-- Modal for forms -->
+<div id="modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/views.js"></script>
+<script src="/js/datatable.js"></script>
 <script>
-    const form = document.getElementById('auth-form');
-    const result = document.getElementById('result');
-    const greeting = document.getElementById('greeting');
-    const nameField = document.getElementById('name');
-    const phoneField = document.getElementById('phone');
-    const modeRegisterBtn = document.getElementById('mode-register');
-    const modeLoginBtn = document.getElementById('mode-login');
-    let mode = 'register';
-
-    const setMode = (m) => {
-        mode = m;
-        const showExtra = m === 'register';
-        nameField.style.display = showExtra ? 'block' : 'none';
-        phoneField.style.display = showExtra ? 'block' : 'none';
-        modeRegisterBtn.classList.toggle('active', m === 'register');
-        modeLoginBtn.classList.toggle('active', m === 'login');
-    };
-
-    modeRegisterBtn.onclick = () => setMode('register');
-    modeLoginBtn.onclick = () => setMode('login');
-
-    const readBody = async (res) => {
-        const text = await res.text();
-        try {
-            return { parsed: JSON.parse(text), raw: text };
-        } catch (err) {
-            return { parsed: null, raw: text };
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+    
+    window.onclick = function(event) {
+        const modal = document.getElementById('modal');
+        if (event.target === modal) {
+            closeModal();
         }
-    };
-
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        result.style.display = 'block';
-        result.textContent = 'Working...';
-        greeting.textContent = '';
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const body = { email, password };
-
-        if (mode === 'register') {
-            body.name = nameField.value || email;
-            body.phone = phoneField.value || null;
-        }
-
-        const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-        try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const bodyParsed = await readBody(res);
-            if (!res.ok) {
-                result.textContent = `Error ${res.status}: ${bodyParsed.raw || JSON.stringify(bodyParsed.parsed)}`;
-                return;
-            }
-            const name = bodyParsed.parsed?.name;
-            greeting.textContent = name ? `Hello, ${name}!` : '';
-            result.textContent = 'Logged in';
-        } catch (err) {
-            result.textContent = 'Request failed: ' + err;
-            greeting.textContent = '';
-        }
-    };
+    }
 </script>
 </html>
-
