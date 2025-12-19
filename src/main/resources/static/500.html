@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Внутренняя ошибка сервера</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <style>
+        .error-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            text-align: center;
+            padding: 40px 24px;
+        }
+        .error-code {
+            font-size: 120px;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 0;
+            line-height: 1;
+        }
+        .error-title {
+            font-size: 32px;
+            margin: 20px 0;
+            color: var(--text);
+        }
+        .error-message {
+            font-size: 18px;
+            color: #6b7280;
+            margin-bottom: 32px;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <div class="shell">
+                <div class="topbar">
+                    <div class="brand">
+                        <div class="brand-mark">MP</div>
+                        <div>
+                            <div style="font-size: 15px;">Musical Philharmonic</div>
+                            <div style="font-size: 12px; color:#cbd5e1;">Live • Concerts • Tickets</div>
+                        </div>
+                    </div>
+                    <nav class="nav">
+                        <a href="/">Главная</a>
+                    </nav>
+                </div>
+            </div>
+        </header>
+        <main class="main-content">
+            <div class="error-page">
+                <h1 class="error-code">500</h1>
+                <h2 class="error-title">Внутренняя ошибка сервера</h2>
+                <p class="error-message">
+                    Произошла внутренняя ошибка сервера. 
+                    Пожалуйста, попробуйте позже или обратитесь в службу поддержки.
+                </p>
+                <div>
+                    <a href="/" class="btn-primary btn-large">Вернуться на главную</a>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
+

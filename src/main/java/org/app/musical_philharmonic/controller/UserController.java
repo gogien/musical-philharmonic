@@ -62,7 +62,7 @@ public class UserController {
     @Operation(summary = "Delete user")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         userService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }
 

@@ -10,10 +10,13 @@ class DataTable {
     }
 
     async render(container) {
+        // Store instance globally so onclick handlers can access it
+        window.dataTable = this;
+        
         // Check if user has permission to create (only ADMIN for most entities)
         const canCreate = this.config.onCreate && 
-                         (this.config.role === 'ADMIN' || 
-                          (this.config.role === 'CASHIER' && this.config.title === 'Билеты'));
+                         (this.app.currentRole === 'ADMIN' || 
+                          (this.app.currentRole === 'CASHIER' && this.config.title === 'Билеты'));
         
         container.innerHTML = `
             <div class="table-wrapper">
@@ -55,6 +58,48 @@ class DataTable {
 
         await this.loadData();
         this.attachSortListeners();
+        this.attachActionListeners();
+    }
+
+    attachActionListeners() {
+        // Edit buttons
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-id');
+                if (id && id !== 'undefined' && id !== 'null') {
+                    this.editItem(id);
+                } else {
+                    console.error('Invalid ID for edit:', id);
+                    alert('Ошибка: не удалось определить ID записи');
+                }
+            };
+        });
+
+        // Delete buttons
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-id');
+                if (id && id !== 'undefined' && id !== 'null') {
+                    this.deleteItem(id);
+                } else {
+                    console.error('Invalid ID for delete:', id);
+                    alert('Ошибка: не удалось определить ID записи');
+                }
+            };
+        });
+
+        // Return buttons (for cashiers)
+        document.querySelectorAll('.return-btn').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-id');
+                if (id && id !== 'undefined' && id !== 'null') {
+                    this.returnTicket(id);
+                } else {
+                    console.error('Invalid ID for return:', id);
+                    alert('Ошибка: не удалось определить ID записи');
+                }
+            };
+        });
     }
 
     renderFilters() {
@@ -132,6 +177,7 @@ class DataTable {
 
             this.renderTableBody(data.content);
             this.updatePagination(data);
+            this.attachActionListeners();
         } catch (err) {
             document.getElementById('table-body').innerHTML = 
                 `<tr><td colspan="${this.config.columns.length + 1}">Ошибка: ${err.message}</td></tr>`;
@@ -145,7 +191,16 @@ class DataTable {
             return;
         }
 
-        tbody.innerHTML = items.map(item => `
+        tbody.innerHTML = items.map(item => {
+            // Ensure we have a valid ID - try different possible ID fields
+            const itemId = item.id || item.userId || item.ticketId || item.concertId || item.hallId || item.performerId;
+            if (!itemId) {
+                console.error('Item missing ID:', item);
+                console.error('Available keys:', Object.keys(item));
+            }
+            // Convert UUID to string if it's an object
+            const idString = itemId ? String(itemId) : null;
+            return `
             <tr>
                 ${this.config.columns.map(col => {
                     let value = item[col.key];
@@ -155,12 +210,13 @@ class DataTable {
                     return `<td>${value || '-'}</td>`;
                 }).join('')}
                 <td class="actions">
-                    ${this.config.onEdit && this.config.role === 'ADMIN' ? `<button class="btn-small" onclick="dataTable.editItem(${item.id})">Изменить</button>` : ''}
-                    ${this.config.onDelete && this.config.role === 'ADMIN' ? `<button class="btn-small btn-danger" onclick="dataTable.deleteItem(${item.id})">Удалить</button>` : ''}
-                    ${this.config.role === 'CASHIER' && this.config.title === 'Билеты' ? `<button class="btn-small" onclick="dataTable.returnTicket(${item.id})">Вернуть</button>` : ''}
+                    ${this.config.onEdit && this.app.currentRole === 'ADMIN' && idString ? `<button class="btn-small edit-btn" data-id="${idString}">Изменить</button>` : ''}
+                    ${this.config.onDelete && this.app.currentRole === 'ADMIN' && idString ? `<button class="btn-small btn-danger delete-btn" data-id="${idString}">Удалить</button>` : ''}
+                    ${this.app.currentRole === 'CASHIER' && this.config.title === 'Билеты' && idString ? `<button class="btn-small return-btn" data-id="${idString}">Вернуть</button>` : ''}
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
     }
 
     updatePagination(data) {
@@ -220,14 +276,21 @@ class DataTable {
 
     async deleteItem(id) {
         // Only ADMIN can delete
-        if (this.config.role !== 'ADMIN') {
+        if (this.app.currentRole !== 'ADMIN') {
             alert('Недостаточно прав для удаления');
+            return;
+        }
+        
+        if (!id || id === 'undefined' || id === 'null') {
+            alert('Ошибка: не удалось определить ID записи');
+            console.error('Invalid ID for deletion:', id);
             return;
         }
         
         if (this.config.onDelete && confirm('Удалить запись?')) {
             try {
-                await this.config.onDelete(id);
+                // Pass as object to match callback signature: (item) => this.deleteUser(item.id)
+                await this.config.onDelete({ id: id });
                 this.loadData();
             } catch (err) {
                 alert('Ошибка удаления: ' + err.message);

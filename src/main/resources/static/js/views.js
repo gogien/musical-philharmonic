@@ -77,6 +77,7 @@ class ViewLoader {
             `;
         } catch (err) {
             container.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
+            app.showNotification(`Ошибка загрузки концертов: ${err.message}`, 'error');
         }
     }
 
@@ -92,6 +93,7 @@ class ViewLoader {
             container.innerHTML = this.renderTicketsTable(data.content);
         } catch (err) {
             container.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
+            app.showNotification(`Ошибка загрузки концертов: ${err.message}`, 'error');
         }
     }
 
@@ -125,10 +127,22 @@ class ViewLoader {
             </div>
         `;
 
-        document.getElementById('sell-ticket-form').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.handleSellTicket();
-        };
+        const sellForm = document.getElementById('sell-ticket-form');
+        if (sellForm) {
+            sellForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const rules = {
+                    'sell-concert-id': [{ required: true, number: true, min: 1 }],
+                    'sell-seat-number': [{ required: true, minLength: 1 }]
+                };
+                
+                if (!FormValidator.validateForm(sellForm, rules)) {
+                    return;
+                }
+                
+                await this.handleSellTicket();
+            };
+        }
     }
 
     async handleSellTicket() {
@@ -143,10 +157,10 @@ class ViewLoader {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
-            alert('Билет успешно продан!');
+            app.showNotification('Билет успешно продан!', 'success');
             document.getElementById('sell-ticket-form').reset();
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -185,7 +199,7 @@ class ViewLoader {
             });
             document.getElementById('sales-results').innerHTML = this.renderTicketsTable(data.content);
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -365,10 +379,26 @@ class ViewLoader {
         
         modal.style.display = 'block';
         
-        document.getElementById('concert-form').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.saveConcert(concert?.id);
-        };
+        const form = document.getElementById('concert-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const rules = {
+                    'form-title': [{ required: true }],
+                    'form-date': [{ required: true, date: true }],
+                    'form-time': [{ required: true, time: true }],
+                    'form-hall-id': [{ required: true, number: true, min: 1 }],
+                    'form-performer-id': [{ required: true, number: true, min: 1 }],
+                    'form-price': [{ required: true, number: true, min: 0 }]
+                };
+                
+                if (!FormValidator.validateForm(form, rules)) {
+                    return;
+                }
+                
+                await this.saveConcert(concert?.id);
+            };
+        }
     }
 
     async saveConcert(id) {
@@ -391,10 +421,10 @@ class ViewLoader {
             });
             
             closeModal();
-            alert('Концерт сохранен!');
+            app.showNotification('Концерт сохранен!', 'success');
             location.reload();
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -409,7 +439,7 @@ class ViewLoader {
                     await this.load(activeTab.dataset.view, document.getElementById('admin-content'));
                 }
             } catch (err) {
-                alert('Ошибка: ' + err.message);
+                app.showNotification(`Ошибка: ${err.message}`, 'error');
             }
         }
     }
@@ -465,10 +495,25 @@ class ViewLoader {
         
         modal.style.display = 'block';
         
-        document.getElementById('user-form').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.saveUser(user?.id);
-        };
+        const form = document.getElementById('user-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const rules = {
+                    'form-email': [{ required: true, email: true }],
+                    'form-name': [{ required: true, minLength: 2 }],
+                    'form-phone': [{ phone: true }],
+                    'form-role': [{ required: true }],
+                    'form-password': user?.id ? [] : [{ required: true, minLength: 6 }]
+                };
+                
+                if (!FormValidator.validateForm(form, rules)) {
+                    return;
+                }
+                
+                await this.saveUser(user?.id);
+            };
+        }
     }
 
     async saveUser(id) {
@@ -493,22 +538,26 @@ class ViewLoader {
             });
             
             closeModal();
-            alert('Пользователь сохранен!');
-            location.reload();
+            app.showNotification('Пользователь сохранен!', 'success');
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
     async deleteUser(id) {
-        if (confirm('Удалить пользователя?')) {
-            try {
-                await this.app.apiCall(`/api/users/${id}`, { method: 'DELETE' });
-                alert('Пользователь удален');
+        try {
+            await this.app.apiCall(`/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            // Success - apiCall handles the response (200 OK with no body)
+            app.showNotification('Пользователь удален', 'success');
+            // Reload the table
+            if (window.dataTable) {
+                window.dataTable.loadData();
+            } else {
                 location.reload();
-            } catch (err) {
-                alert('Ошибка: ' + err.message);
             }
+        } catch (err) {
+            // Error already shown by apiCall
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -549,10 +598,22 @@ class ViewLoader {
         
         modal.style.display = 'block';
         
-        document.getElementById('hall-form').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.saveHall(hall?.id);
-        };
+        const form = document.getElementById('hall-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const rules = {
+                    'form-hall-name': [{ required: true, minLength: 2 }],
+                    'form-capacity': [{ required: true, number: true, min: 1 }]
+                };
+                
+                if (!FormValidator.validateForm(form, rules)) {
+                    return;
+                }
+                
+                await this.saveHall(hall?.id);
+            };
+        }
     }
 
     async saveHall(id) {
@@ -572,10 +633,10 @@ class ViewLoader {
             });
             
             closeModal();
-            alert('Зал сохранен!');
+            app.showNotification('Зал сохранен!', 'success');
             location.reload();
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -586,7 +647,7 @@ class ViewLoader {
                 alert('Зал удален');
                 location.reload();
             } catch (err) {
-                alert('Ошибка: ' + err.message);
+                app.showNotification(`Ошибка: ${err.message}`, 'error');
             }
         }
     }
@@ -620,10 +681,21 @@ class ViewLoader {
         
         modal.style.display = 'block';
         
-        document.getElementById('performer-form').onsubmit = async (e) => {
-            e.preventDefault();
-            await this.savePerformer(performer?.id);
-        };
+        const form = document.getElementById('performer-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const rules = {
+                    'form-performer-name': [{ required: true, minLength: 2 }]
+                };
+                
+                if (!FormValidator.validateForm(form, rules)) {
+                    return;
+                }
+                
+                await this.savePerformer(performer?.id);
+            };
+        }
     }
 
     async savePerformer(id) {
@@ -641,10 +713,10 @@ class ViewLoader {
             });
             
             closeModal();
-            alert('Исполнитель сохранен!');
+            app.showNotification('Исполнитель сохранен!', 'success');
             location.reload();
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -655,7 +727,7 @@ class ViewLoader {
                 alert('Исполнитель удален');
                 location.reload();
             } catch (err) {
-                alert('Ошибка: ' + err.message);
+                app.showNotification(`Ошибка: ${err.message}`, 'error');
             }
         }
     }
@@ -667,7 +739,7 @@ class ViewLoader {
                 alert('Билет удален');
                 location.reload();
             } catch (err) {
-                alert('Ошибка: ' + err.message);
+                app.showNotification(`Ошибка: ${err.message}`, 'error');
             }
         }
     }
@@ -738,6 +810,7 @@ class ViewLoader {
             };
         } catch (err) {
             container.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
+            app.showNotification(`Ошибка загрузки концертов: ${err.message}`, 'error');
         }
     }
 
@@ -791,7 +864,7 @@ class ViewLoader {
             `;
             modal.style.display = 'block';
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -811,9 +884,9 @@ class ViewLoader {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
-            alert('Билет забронирован!');
+            app.showNotification('Билет забронирован!', 'success');
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 
@@ -833,9 +906,9 @@ class ViewLoader {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
-            alert('Билет куплен!');
+            app.showNotification('Билет куплен!', 'success');
         } catch (err) {
-            alert('Ошибка: ' + err.message);
+            app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
     }
 }

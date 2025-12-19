@@ -15,7 +15,19 @@ class App {
     async init() {
         await this.checkAuth();
         this.setupNavigation();
+        this.setupBrandClick();
         this.render();
+    }
+
+    setupBrandClick() {
+        // Make brand block clickable on all pages
+        const brand = document.querySelector('.brand');
+        if (brand) {
+            brand.style.cursor = 'pointer';
+            brand.onclick = () => {
+                this.navigate('home');
+            };
+        }
     }
 
     async checkAuth() {
@@ -46,12 +58,69 @@ class App {
                 ...options.headers
             }
         };
-        const response = await fetch(endpoint, { ...defaultOptions, ...options });
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error: ${response.status} - ${error}`);
+        try {
+            const response = await fetch(endpoint, { ...defaultOptions, ...options });
+            if (!response.ok) {
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (e) {
+                    errorData = { message: await response.text() || `HTTP ${response.status}` };
+                }
+                this.showError(errorData, response.status);
+                throw new Error(errorData.message || `API Error: ${response.status}`);
+            }
+            // Handle responses with no body (e.g., DELETE 200 OK)
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // No JSON body, return success indicator
+                return { success: true };
+            }
+            // Try to parse JSON, but handle empty responses gracefully
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                return { success: true };
+            }
+            return JSON.parse(text);
+        } catch (err) {
+            if (err.message && !err.message.startsWith('API Error')) {
+                this.showError({ message: err.message }, 500);
+            }
+            throw err;
         }
-        return response.json();
+    }
+
+    showError(errorData, status) {
+        const message = errorData.message || errorData.error || `Ошибка ${status}`;
+        const details = errorData.fieldErrors ? 
+            Object.entries(errorData.fieldErrors).map(([field, msg]) => `${field}: ${msg}`).join('\n') : 
+            '';
+        
+        const fullMessage = details ? `${message}\n\nДетали:\n${details}` : message;
+        
+        // Show error notification
+        this.showNotification(fullMessage, 'error');
+    }
+
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <span class="notification-message">${message}</span>
+                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+            </div>
+        `;
+        
+        const container = document.body;
+        container.appendChild(notification);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.remove();
+            }
+        }, 5000);
     }
 
     navigate(view) {
@@ -76,8 +145,10 @@ class App {
             if (logoutBtn) logoutBtn.style.display = 'block';
             if (mainNav) {
                 mainNav.innerHTML = `
-                    <a href="#" onclick="app.navigate('home'); return false;">Главная</a>
                     <a href="#" onclick="app.navigate('dashboard'); return false;">Панель управления</a>
+                    ${this.currentRole === 'ADMIN' || this.currentRole === 'CASHIER' ? 
+                        '<a href="#" onclick="app.navigate(\'statistics\'); return false;">Статистика</a>' : ''}
+                    <a href="#" onclick="app.navigate('about'); return false;">О проекте</a>
                 `;
             }
         } else {
@@ -86,6 +157,7 @@ class App {
             if (mainNav) {
                 mainNav.innerHTML = `
                     <a href="#" onclick="app.navigate('home'); return false;">Главная</a>
+                    <a href="#" onclick="app.navigate('about'); return false;">О проекте</a>
                 `;
             }
         }
@@ -94,6 +166,8 @@ class App {
         if (!this.currentUser) {
             if (this.currentView === 'home' || !this.currentView || this.currentView === '') {
                 container.innerHTML = this.renderWelcomePage();
+            } else if (this.currentView === 'about') {
+                this.loadAboutPage(container);
             } else if (this.currentView === 'login') {
                 container.innerHTML = this.renderLogin();
                 // Show login form
@@ -112,6 +186,19 @@ class App {
         } else {
             if (this.currentView === 'home' || this.currentView === '') {
                 container.innerHTML = this.renderHomePage();
+                // Load default view for home page tabs (only if tabs exist, not for CUSTOMER)
+                if (this.currentRole !== 'CUSTOMER') {
+                    setTimeout(() => {
+                        const activeTab = document.querySelector('.tab-btn.active');
+                        if (activeTab) {
+                            this.loadView(activeTab.dataset.view);
+                        }
+                    }, 100);
+                }
+            } else if (this.currentView === 'about') {
+                this.loadAboutPage(container);
+            } else if (this.currentView === 'statistics') {
+                this.loadStatisticsPage(container);
             } else if (this.currentView === 'dashboard') {
                 container.innerHTML = this.renderDashboard();
                 // Load default view
@@ -180,20 +267,84 @@ class App {
     renderHomePage() {
         const roleGreetings = {
             'CUSTOMER': 'Добро пожаловать в личный кабинет',
-            'CASHIER': 'Панель кассира',
-            'ADMIN': 'Панель администратора'
+            'CASHIER': 'Добро пожаловать в панель кассира',
+            'ADMIN': 'Добро пожаловать в панель администратора'
         };
+        
+        // Get tabs based on role (no tabs for CUSTOMER)
+        let tabs = '';
+        let contentId = '';
+        let dashboardSection = '';
+        
+        if (this.currentRole === 'CUSTOMER') {
+            // No tabs for customers
+            dashboardSection = '';
+        } else if (this.currentRole === 'CASHIER') {
+            tabs = `
+                <button class="tab-btn active" data-view="sell-ticket">Продать билет</button>
+                <button class="tab-btn" data-view="tickets">Билеты</button>
+                <button class="tab-btn" data-view="sales-history">История продаж</button>
+            `;
+            contentId = 'cashier-content';
+            dashboardSection = `
+                <div class="dashboard">
+                    <div class="dashboard-tabs">
+                        ${tabs}
+                    </div>
+                    <div id="${contentId}"></div>
+                </div>
+            `;
+        } else if (this.currentRole === 'ADMIN') {
+            tabs = `
+                <button class="tab-btn active" data-view="concerts">Концерты</button>
+                <button class="tab-btn" data-view="tickets">Билеты</button>
+                <button class="tab-btn" data-view="users">Пользователи</button>
+                <button class="tab-btn" data-view="halls">Залы</button>
+                <button class="tab-btn" data-view="performers">Исполнители</button>
+            `;
+            contentId = 'admin-content';
+            dashboardSection = `
+                <div class="dashboard">
+                    <div class="dashboard-tabs">
+                        ${tabs}
+                    </div>
+                    <div id="${contentId}"></div>
+                </div>
+            `;
+        }
+        
+        // Don't show features section for ADMIN
+        const featuresSection = this.currentRole === 'ADMIN' ? '' : `
+            <section class="features">
+                <div class="shell">
+                    <h2 class="section-title">Возможности</h2>
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <h3>🎵 Концерты</h3>
+                            <p>Просматривайте предстоящие концерты и бронируйте билеты онлайн</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>🎫 Билеты</h3>
+                            <p>Управляйте своими билетами, просматривайте историю покупок</p>
+                        </div>
+                        <div class="feature-card">
+                            <h3>👤 Профиль</h3>
+                            <p>Управляйте личной информацией и настройками аккаунта</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        `;
         
         return `
             <section class="hero">
                 <div class="hero-content">
                     <h1 class="hero-title">${roleGreetings[this.currentRole] || 'Добро пожаловать'}, ${this.currentUser.name || 'Пользователь'}!</h1>
-                    <p class="hero-sub">Выберите раздел в меню для работы с системой</p>
-                    <div class="hero-actions" style="margin-top: 24px;">
-                        <button class="btn-primary btn-large" onclick="app.navigate('dashboard')">Перейти к панели управления</button>
-                    </div>
+                    <p class="hero-sub">Выберите раздел для работы с системой</p>
                 </div>
             </section>
+            ${featuresSection}
+            ${dashboardSection}
         `;
     }
 
@@ -295,6 +446,13 @@ class App {
         if (loginForm) {
             loginForm.onsubmit = async (e) => {
                 e.preventDefault();
+                const rules = {
+                    'login-email': [{ required: true, email: true }],
+                    'login-password': [{ required: true, minLength: 6 }]
+                };
+                if (!FormValidator.validateForm(loginForm, rules)) {
+                    return;
+                }
                 await this.handleLogin();
             };
         }
@@ -304,6 +462,15 @@ class App {
         if (registerForm) {
             registerForm.onsubmit = async (e) => {
                 e.preventDefault();
+                const rules = {
+                    'register-email': [{ required: true, email: true }],
+                    'register-password': [{ required: true, minLength: 6 }],
+                    'register-name': [{ required: true, minLength: 2 }],
+                    'register-phone': [{ phone: true }]
+                };
+                if (!FormValidator.validateForm(registerForm, rules)) {
+                    return;
+                }
                 await this.handleRegister();
             };
         }
@@ -349,7 +516,7 @@ class App {
             await this.checkAuth();
             this.render();
         } catch (err) {
-            alert('Ошибка входа: ' + err.message);
+            // Error already shown by apiCall
         }
     }
 
@@ -366,7 +533,7 @@ class App {
             await this.checkAuth();
             this.render();
         } catch (err) {
-            alert('Ошибка регистрации: ' + err.message);
+            // Error already shown by apiCall
         }
     }
 
@@ -394,7 +561,139 @@ class App {
         document.cookie = 'JWT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         this.currentUser = null;
         this.currentRole = null;
+        this.currentView = 'home';
         this.render();
+    }
+
+    async loadAboutPage(container) {
+        container.innerHTML = '<div class="loading">Загрузка...</div>';
+        try {
+            const data = await this.apiCall('/api/about', { method: 'GET' });
+            container.innerHTML = `
+                <section class="about-section">
+                    <div class="about-container">
+                        <h1>О проекте</h1>
+                        <div class="about-card">
+                            <h2>Автор проекта</h2>
+                            <div class="about-info">
+                                <p><strong>ФИО:</strong> ${data.authorName}</p>
+                                <p><strong>Группа/Учебное заведение:</strong> ${data.group}</p>
+                                <p><strong>Email:</strong> <a href="mailto:${data.contactEmail}">${data.contactEmail}</a></p>
+                                <p><strong>Телефон:</strong> ${data.contactPhone}</p>
+                            </div>
+                        </div>
+                        <div class="about-card">
+                            <h2>Опыт работы с технологиями</h2>
+                            <ul class="tech-list">
+                                ${data.technologies.map(tech => `<li>${tech}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="about-card">
+                            <h2>Сроки проекта</h2>
+                            <div class="about-info">
+                                <p><strong>Дата начала:</strong> ${new Date(data.projectStartDate).toLocaleDateString('ru-RU')}</p>
+                                <p><strong>Дата окончания:</strong> ${new Date(data.projectEndDate).toLocaleDateString('ru-RU')}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        } catch (err) {
+            container.innerHTML = `<div class="error">Ошибка загрузки информации: ${err.message}</div>`;
+        }
+    }
+
+    async loadStatisticsPage(container) {
+        container.innerHTML = '<div class="loading">Загрузка...</div>';
+        try {
+            const data = await this.apiCall('/api/statistics', { method: 'GET' });
+            container.innerHTML = `
+                <div class="statistics-page">
+                    <h1>Статистика системы</h1>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Всего пользователей</h3>
+                            <div class="stat-value">${data.totalUsers}</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Среднее время ожидания</h3>
+                            <div class="stat-value">${Math.round(data.averageWaitTimeMinutes)} мин</div>
+                            <div class="stat-sub">(${data.averageWaitTimeHours.toFixed(2)} часов)</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Всего билетов</h3>
+                            <div class="stat-value">${data.totalTickets}</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Продано билетов</h3>
+                            <div class="stat-value">${data.soldTickets}</div>
+                        </div>
+                    </div>
+                    <div class="charts-container">
+                        <div class="chart-card">
+                            <h3>Распределение пользователей по ролям</h3>
+                            <div class="chart" id="users-chart"></div>
+                        </div>
+                        <div class="chart-card">
+                            <h3>Статусы билетов</h3>
+                            <div class="chart" id="tickets-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Render charts
+            this.renderUsersChart(data.usersByRole);
+            this.renderTicketsChart(data.ticketsByStatus);
+        } catch (err) {
+            container.innerHTML = `<div class="error">Ошибка загрузки статистики: ${err.message}</div>`;
+        }
+    }
+
+    renderUsersChart(usersByRole) {
+        const chartDiv = document.getElementById('users-chart');
+        if (!chartDiv) return;
+        
+        const data = Object.entries(usersByRole);
+        const maxValue = Math.max(...data.map(([_, val]) => val), 1);
+        
+        chartDiv.innerHTML = `
+            <div class="bar-chart">
+                ${data.map(([role, count]) => `
+                    <div class="bar-item">
+                        <div class="bar-label">${role}</div>
+                        <div class="bar-container">
+                            <div class="bar" style="width: ${(count / maxValue) * 100}%">
+                                <span class="bar-value">${count}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    renderTicketsChart(ticketsByStatus) {
+        const chartDiv = document.getElementById('tickets-chart');
+        if (!chartDiv) return;
+        
+        const data = Object.entries(ticketsByStatus);
+        const maxValue = Math.max(...data.map(([_, val]) => val), 1);
+        
+        chartDiv.innerHTML = `
+            <div class="bar-chart">
+                ${data.map(([status, count]) => `
+                    <div class="bar-item">
+                        <div class="bar-label">${status}</div>
+                        <div class="bar-container">
+                            <div class="bar" style="width: ${(count / maxValue) * 100}%">
+                                <span class="bar-value">${count}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
     }
 }
 
