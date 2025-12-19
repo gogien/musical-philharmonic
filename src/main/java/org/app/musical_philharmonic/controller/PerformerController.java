@@ -60,5 +60,13 @@ public class PerformerController {
         performerService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/public/list")
+    @Operation(summary = "List performers (public access)")
+    public Page<PerformerResponse> publicList(@RequestBody org.app.musical_philharmonic.dto.PerformerSearchRequest request) {
+        Pageable pageable = org.app.musical_philharmonic.util.PageableUtil.toPageable(
+                request.getPage(), request.getSize(), request.getSort());
+        return performerService.list(request.getName(), pageable);
+    }
 }
 

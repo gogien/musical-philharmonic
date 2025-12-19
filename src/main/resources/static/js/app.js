@@ -20,12 +20,13 @@ class App {
     }
 
     setupBrandClick() {
-        // Make brand block clickable on all pages
+        // Make brand block clickable on all pages - navigate to welcome page
         const brand = document.querySelector('.brand');
         if (brand) {
             brand.style.cursor = 'pointer';
             brand.onclick = () => {
-                this.navigate('home');
+                this.currentView = 'welcome';
+                this.render();
             };
         }
     }
@@ -145,7 +146,8 @@ class App {
             if (logoutBtn) logoutBtn.style.display = 'block';
             if (mainNav) {
                 mainNav.innerHTML = `
-                    <a href="#" onclick="app.navigate('dashboard'); return false;">Панель управления</a>
+                    <a href="#" onclick="app.currentView='welcome'; app.render(); return false;">Главная</a>
+                    <a href="#" onclick="app.currentView='profile'; app.render(); return false;">Профиль</a>
                     ${this.currentRole === 'ADMIN' || this.currentRole === 'CASHIER' ? 
                         '<a href="#" onclick="app.navigate(\'statistics\'); return false;">Статистика</a>' : ''}
                     <a href="#" onclick="app.navigate('about'); return false;">О проекте</a>
@@ -156,7 +158,7 @@ class App {
             if (logoutBtn) logoutBtn.style.display = 'none';
             if (mainNav) {
                 mainNav.innerHTML = `
-                    <a href="#" onclick="app.navigate('home'); return false;">Главная</a>
+                    <a href="#" onclick="app.currentView='welcome'; app.render(); return false;">Главная</a>
                     <a href="#" onclick="app.navigate('about'); return false;">О проекте</a>
                 `;
             }
@@ -164,8 +166,8 @@ class App {
 
         // Render based on current view and role
         if (!this.currentUser) {
-            if (this.currentView === 'home' || !this.currentView || this.currentView === '') {
-                container.innerHTML = this.renderWelcomePage();
+            if (this.currentView === 'welcome' || this.currentView === 'home' || !this.currentView || this.currentView === '') {
+                this.loadWelcomePage(container);
             } else if (this.currentView === 'about') {
                 this.loadAboutPage(container);
             } else if (this.currentView === 'login') {
@@ -180,21 +182,26 @@ class App {
                 const loginCard = document.querySelector('.auth-card:first-of-type');
                 if (registerCard) registerCard.style.display = 'block';
                 if (loginCard) loginCard.style.display = 'none';
+            } else if (this.currentView.startsWith('concert-')) {
+                // Concert detail page (public access)
+                const concertId = parseInt(this.currentView.replace('concert-', ''));
+                this.loadConcertDetail(container, concertId);
             } else {
-                container.innerHTML = this.renderWelcomePage();
+                this.loadWelcomePage(container);
             }
         } else {
-            if (this.currentView === 'home' || this.currentView === '') {
-                container.innerHTML = this.renderHomePage();
-                // Load default view for home page tabs (only if tabs exist, not for CUSTOMER)
-                if (this.currentRole !== 'CUSTOMER') {
-                    setTimeout(() => {
-                        const activeTab = document.querySelector('.tab-btn.active');
-                        if (activeTab) {
-                            this.loadView(activeTab.dataset.view);
-                        }
-                    }, 100);
-                }
+            if (this.currentView === 'welcome' || this.currentView === 'home' || this.currentView === '') {
+                // Show welcome page even when logged in
+                this.loadWelcomePage(container);
+            } else if (this.currentView === 'profile') {
+                // Profile page based on role
+                container.innerHTML = this.renderProfilePage();
+                setTimeout(() => {
+                    const activeTab = document.querySelector('.tab-btn.active');
+                    if (activeTab) {
+                        this.loadView(activeTab.dataset.view);
+                    }
+                }, 100);
             } else if (this.currentView === 'about') {
                 this.loadAboutPage(container);
             } else if (this.currentView === 'statistics') {
@@ -208,6 +215,10 @@ class App {
                         this.loadView(activeTab.dataset.view);
                     }
                 }, 100);
+            } else if (this.currentView.startsWith('concert-')) {
+                // Concert detail page
+                const concertId = parseInt(this.currentView.replace('concert-', ''));
+                this.loadConcertDetail(container, concertId);
             } else {
                 container.innerHTML = this.renderDashboard();
                 // Load default view
@@ -224,44 +235,110 @@ class App {
         this.attachEventListeners();
     }
 
-    renderWelcomePage() {
-        return `
-            <section class="hero">
-                <div class="hero-content">
-                    <h1 class="hero-title">Добро пожаловать в Musical Philharmonic</h1>
-                    <p class="hero-sub">Онлайн-трансляции и концерты. Подключайтесь к событиям филармонии, бронируйте места и следите за новыми программами.</p>
-                    <div class="hero-actions">
-                        <button class="btn-primary btn-large" onclick="app.showLogin()">Войти</button>
-                        <button class="btn btn-large" onclick="app.showRegister()">Зарегистрироваться</button>
-                    </div>
-                    <div class="tags" style="margin-top: 24px;">
-                        <span class="tag">Классика</span>
-                        <span class="tag">Джаз</span>
-                        <span class="tag">Live</span>
-                        <span class="tag">Абонементы</span>
-                    </div>
+    async loadWelcomePage(container) {
+        container.innerHTML = '<div class="loading">Загрузка...</div>';
+        
+        try {
+            // Load upcoming concerts
+            const concertsRequest = {
+                page: 0,
+                size: 6,
+                sort: 'date,asc'
+            };
+            const concertsData = await this.apiCall('/api/concerts/public/upcoming', {
+                method: 'POST',
+                body: JSON.stringify(concertsRequest)
+            });
+
+            // Load performers
+            const performersRequest = {
+                page: 0,
+                size: 6,
+                sort: 'name,asc',
+                name: null
+            };
+            const performersData = await this.apiCall('/api/performers/public/list', {
+                method: 'POST',
+                body: JSON.stringify(performersRequest)
+            });
+
+            const authButtons = this.currentUser ? '' : `
+                <div class="hero-actions">
+                    <button class="btn-primary btn-large" onclick="app.showLogin()">Войти</button>
+                    <button class="btn btn-large" onclick="app.showRegister()">Зарегистрироваться</button>
                 </div>
-            </section>
-            <section class="features">
-                <div class="shell">
-                    <h2 class="section-title">Возможности</h2>
-                    <div class="features-grid">
-                        <div class="feature-card">
-                            <h3>🎵 Концерты</h3>
-                            <p>Просматривайте предстоящие концерты и бронируйте билеты онлайн</p>
-                        </div>
-                        <div class="feature-card">
-                            <h3>🎫 Билеты</h3>
-                            <p>Управляйте своими билетами, просматривайте историю покупок</p>
-                        </div>
-                        <div class="feature-card">
-                            <h3>👤 Профиль</h3>
-                            <p>Управляйте личной информацией и настройками аккаунта</p>
+            `;
+
+            container.innerHTML = `
+                <section class="hero">
+                    <div class="hero-content">
+                        <h1 class="hero-title">Добро пожаловать в Musical Philharmonic</h1>
+                        <p class="hero-sub">Онлайн-трансляции и концерты. Подключайтесь к событиям филармонии, бронируйте места и следите за новыми программами.</p>
+                        ${authButtons}
+                        <div class="tags" style="margin-top: 24px;">
+                            <span class="tag">Классика</span>
+                            <span class="tag">Джаз</span>
+                            <span class="tag">Live</span>
+                            <span class="tag">Абонементы</span>
                         </div>
                     </div>
-                </div>
-            </section>
-        `;
+                </section>
+                <section class="features">
+                    <div class="shell">
+                        <h2 class="section-title">О филармонии</h2>
+                        <div class="features-grid">
+                            <div class="feature-card">
+                                <h3>🎵 Концерты</h3>
+                                <p>Просматривайте предстоящие концерты и бронируйте билеты онлайн</p>
+                            </div>
+                            <div class="feature-card">
+                                <h3>🎫 Билеты</h3>
+                                <p>Управляйте своими билетами, просматривайте историю покупок</p>
+                            </div>
+                            <div class="feature-card">
+                                <h3>👤 Профиль</h3>
+                                <p>Управляйте личной информацией и настройками аккаунта</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section class="concerts-section" style="padding: 60px 0; background: #fff;">
+                    <div class="shell">
+                        <h2 class="section-title">Предстоящие концерты</h2>
+                        <div class="concerts-grid">
+                            ${concertsData.content && concertsData.content.length > 0 ? 
+                                concertsData.content.map(concert => `
+                                    <div class="concert-card" style="cursor: pointer;" onclick="app.currentView='concert-${concert.id}'; app.render();">
+                                        <h3>${concert.title}</h3>
+                                        <p>${new Date(concert.date).toLocaleDateString('ru-RU')} в ${concert.time}</p>
+                                        <p>Цена: ${concert.ticketPrice} ₽</p>
+                                    </div>
+                                `).join('') : 
+                                '<p>Концерты не найдены</p>'
+                            }
+                        </div>
+                    </div>
+                </section>
+                <section class="performers-section" style="padding: 60px 0; background: #f9fafb;">
+                    <div class="shell">
+                        <h2 class="section-title">Исполнители</h2>
+                        <div class="concerts-grid">
+                            ${performersData.content && performersData.content.length > 0 ? 
+                                performersData.content.map(performer => `
+                                    <div class="concert-card">
+                                        <h3>${performer.name}</h3>
+                                    </div>
+                                `).join('') : 
+                                '<p>Исполнители не найдены</p>'
+                            }
+                        </div>
+                    </div>
+                </section>
+            `;
+        } catch (err) {
+            container.innerHTML = `<div class="error">Ошибка загрузки: ${err.message}</div>`;
+            console.error('Error loading welcome page:', err);
+        }
     }
 
     renderHomePage() {
@@ -514,6 +591,8 @@ class App {
                 body: JSON.stringify({ email, password })
             });
             await this.checkAuth();
+            // Redirect to profile page after login
+            this.currentView = 'profile';
             this.render();
         } catch (err) {
             // Error already shown by apiCall
@@ -531,6 +610,8 @@ class App {
                 body: JSON.stringify({ email, password, name, phone })
             });
             await this.checkAuth();
+            // Redirect to profile page after registration
+            this.currentView = 'profile';
             this.render();
         } catch (err) {
             // Error already shown by apiCall
@@ -561,8 +642,123 @@ class App {
         document.cookie = 'JWT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         this.currentUser = null;
         this.currentRole = null;
-        this.currentView = 'home';
+        this.currentView = 'welcome';
         this.render();
+    }
+
+    async loadConcertDetail(container, concertId) {
+        container.innerHTML = '<div class="loading">Загрузка...</div>';
+        try {
+            const concert = await this.apiCall(`/api/concerts/public/${concertId}`, { method: 'GET' });
+            const hall = await this.apiCall(`/api/halls/public/${concert.hallId}`, { method: 'GET' });
+            
+            const bookButton = this.currentUser && this.currentRole === 'CUSTOMER' ? `
+                <button class="btn-primary btn-large" onclick="viewLoader.showBookForm(${concert.id}, ${hall.capacity})">
+                    Забронировать билет
+                </button>
+            ` : this.currentUser ? '' : `
+                <p style="color: #6b7280;">Войдите в систему, чтобы забронировать билет</p>
+            `;
+
+            container.innerHTML = `
+                <section class="hero" style="padding: 40px 0;">
+                    <div class="shell">
+                        <p><a href="#" onclick="app.currentView='welcome'; app.render(); return false;">← Вернуться на главную</a></p>
+                        <div style="max-width: 800px; margin: 40px auto; background: #fff; padding: 40px; border-radius: var(--radius); box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);">
+                            <h1 style="margin: 0 0 20px;">${concert.title}</h1>
+                            <div style="margin: 20px 0; color: #6b7280;">
+                                <p><strong>Дата:</strong> ${new Date(concert.date).toLocaleDateString('ru-RU')}</p>
+                                <p><strong>Время:</strong> ${concert.time}</p>
+                                <p><strong>Цена билета:</strong> ${concert.ticketPrice} ₽</p>
+                            </div>
+                            <div style="margin: 30px 0;">
+                                ${bookButton}
+                            </div>
+                            <div id="book-form-container" style="display: none; margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 8px;">
+                                <h3>Бронирование места</h3>
+                                <form id="book-ticket-form">
+                                    <div class="form-group">
+                                        <label>Номер места (от 1 до ${hall.capacity}):</label>
+                                        <input type="number" id="seat-number" min="1" max="${hall.capacity}" required>
+                                    </div>
+                                    <button type="submit" class="btn-primary">Забронировать</button>
+                                    <button type="button" class="btn" onclick="document.getElementById('book-form-container').style.display='none';">Отмена</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+
+            // Attach form handler
+            const form = document.getElementById('book-ticket-form');
+            if (form) {
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const seatNumber = document.getElementById('seat-number').value;
+                    if (!seatNumber || seatNumber < 1 || seatNumber > hall.capacity) {
+                        alert(`Номер места должен быть от 1 до ${hall.capacity}`);
+                        return;
+                    }
+                    try {
+                        const viewLoader = new ViewLoader(this);
+                        await viewLoader.bookTicket(concertId, parseInt(seatNumber));
+                        document.getElementById('book-form-container').style.display = 'none';
+                        this.showNotification('Билет успешно забронирован!', 'success');
+                    } catch (err) {
+                        this.showNotification(`Ошибка: ${err.message}`, 'error');
+                    }
+                };
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="error">Ошибка загрузки концерта: ${err.message}</div>`;
+        }
+    }
+
+    renderProfilePage() {
+        let tabs = '';
+        let contentId = '';
+        
+        if (this.currentRole === 'CUSTOMER') {
+            tabs = `
+                <button class="tab-btn active" data-view="my-tickets">Мои билеты</button>
+                <button class="tab-btn" data-view="profile">Личная информация</button>
+            `;
+            contentId = 'customer-content';
+        } else if (this.currentRole === 'CASHIER') {
+            tabs = `
+                <button class="tab-btn active" data-view="sell-ticket">Продать билет</button>
+                <button class="tab-btn" data-view="tickets">Билеты</button>
+                <button class="tab-btn" data-view="sales-history">История продаж</button>
+            `;
+            contentId = 'cashier-content';
+        } else if (this.currentRole === 'ADMIN') {
+            tabs = `
+                <button class="tab-btn active" data-view="concerts">Концерты</button>
+                <button class="tab-btn" data-view="tickets">Билеты</button>
+                <button class="tab-btn" data-view="users">Пользователи</button>
+                <button class="tab-btn" data-view="halls">Залы</button>
+                <button class="tab-btn" data-view="performers">Исполнители</button>
+            `;
+            contentId = 'admin-content';
+        }
+        
+        return `
+            <section class="hero" style="padding: 40px 0;">
+                <div class="hero-content">
+                    <h1 class="hero-title">Профиль: ${this.currentUser.name || 'Пользователь'}</h1>
+                    <p class="hero-sub">${this.currentRole === 'CUSTOMER' ? 'Управление билетами и личной информацией' : 
+                        this.currentRole === 'CASHIER' ? 'Панель управления билетами' : 
+                        'Панель администратора'}</p>
+                </div>
+            </section>
+            <div class="dashboard">
+                <div class="dashboard-tabs">
+                    ${tabs}
+                </div>
+                <div id="${contentId}"></div>
+            </div>
+        `;
     }
 
     async loadAboutPage(container) {

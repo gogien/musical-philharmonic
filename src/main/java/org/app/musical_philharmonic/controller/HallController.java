@@ -60,5 +60,11 @@ public class HallController {
         hallService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/public/{id}")
+    @Operation(summary = "Get hall by id (public access)")
+    public HallResponse publicGet(@PathVariable Integer id) {
+        return hallService.get(id);
+    }
 }
 

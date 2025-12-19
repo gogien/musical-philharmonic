@@ -868,23 +868,47 @@ class ViewLoader {
         }
     }
 
-    async bookTicket(concertId) {
-        const seatNumber = prompt('Введите номер места:');
-        if (!seatNumber) return;
+    showBookForm(concertId, capacity) {
+        const container = document.getElementById('book-form-container');
+        if (container) {
+            container.style.display = 'block';
+            const form = document.getElementById('book-ticket-form');
+            if (form) {
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const seatNumber = document.getElementById('seat-number').value;
+                    if (!seatNumber || seatNumber < 1 || seatNumber > capacity) {
+                        alert(`Номер места должен быть от 1 до ${capacity}`);
+                        return;
+                    }
+                    await this.bookTicket(concertId, seatNumber);
+                };
+            }
+        }
+    }
+
+    async bookTicket(concertId, seatNumber) {
+        if (!seatNumber) {
+            seatNumber = prompt('Введите номер места:');
+            if (!seatNumber) return;
+        }
         
-        const minutes = prompt('Время резервации в минутах (по умолчанию 30):', '30');
+        const minutes = 30; // Default reservation time
         
         try {
             const request = {
                 concertId: concertId,
                 seatNumber: seatNumber,
-                minutes: minutes ? parseInt(minutes) : 30
+                minutes: minutes
             };
             await this.app.apiCall('/api/customer/tickets/book', {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
             app.showNotification('Билет забронирован!', 'success');
+            // Hide form if visible
+            const container = document.getElementById('book-form-container');
+            if (container) container.style.display = 'none';
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }

@@ -67,5 +67,19 @@ public class ConcertController {
     public Object stats(@PathVariable Integer id) {
         return concertService.stats(id);
     }
+
+    @PostMapping("/public/upcoming")
+    @Operation(summary = "View upcoming concerts (public access)")
+    public Page<ConcertResponse> publicUpcoming(@RequestBody org.app.musical_philharmonic.dto.PageableRequest request) {
+        Pageable pageable = PageableUtil.toPageable(request.getPage(), request.getSize(), request.getSort());
+        java.time.LocalDate today = java.time.LocalDate.now();
+        return concertService.upcoming(today, today.plusYears(1), pageable);
+    }
+
+    @GetMapping("/public/{id}")
+    @Operation(summary = "Get concert by id (public access)")
+    public ConcertResponse publicGet(@PathVariable Integer id) {
+        return concertService.get(id);
+    }
 }
 
