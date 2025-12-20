@@ -6,6 +6,7 @@ public class TicketSellRequest {
     private String buyerEmail;
     private String paymentMethod = "cash";
     private String actorEmail;
+    private Integer quantity = 1;
 
     public Integer getConcertId() {
         return concertId;
@@ -45,6 +46,14 @@ public class TicketSellRequest {
 
     public void setActorEmail(String actorEmail) {
         this.actorEmail = actorEmail;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
     }
 }
 

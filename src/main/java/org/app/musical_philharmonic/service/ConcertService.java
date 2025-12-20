@@ -115,6 +115,14 @@ public class ConcertService {
         return java.util.Map.of("concertId", id, "sold", sold, "available", available);
     }
 
+    public long getAvailableTicketsCount(Integer id) {
+        Concert concert = concertRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Concert not found"));
+        int hallCapacity = concert.getHall().getCapacity();
+        long bookedTickets = ticketRepository.countReservedOrSoldByConcert(id);
+        return Math.max(0, hallCapacity - bookedTickets);
+    }
+
     private ConcertResponse toResponse(Concert concert) {
         ConcertResponse resp = new ConcertResponse();
         resp.setId(concert.getId());

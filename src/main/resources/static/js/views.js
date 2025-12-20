@@ -131,12 +131,12 @@ class ViewLoader {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Номер места:</label>
-                            <input type="text" id="sell-seat-number" required>
-                        </div>
-                        <div class="form-group">
                             <label>Email покупателя (обязательно):</label>
                             <input type="email" id="sell-buyer-email" required placeholder="email@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Количество билетов:</label>
+                            <input type="number" id="sell-quantity" min="1" value="1" required>
                         </div>
                         <div class="form-group">
                             <label>Способ оплаты:</label>
@@ -145,7 +145,7 @@ class ViewLoader {
                                 <option value="card">Карта</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn-primary">Продать билет</button>
+                        <button type="submit" class="btn-primary">Продать билеты</button>
                     </form>
                 </div>
             `;
@@ -156,8 +156,8 @@ class ViewLoader {
                     e.preventDefault();
                     const rules = {
                         'sell-concert-id': [{ required: true }],
-                        'sell-seat-number': [{ required: true, minLength: 1 }],
-                        'sell-buyer-email': [{ required: true, email: true }]
+                        'sell-buyer-email': [{ required: true, email: true }],
+                        'sell-quantity': [{ required: true, number: true, min: 1 }]
                     };
                     
                     if (!FormValidator.validateForm(sellForm, rules)) {
@@ -174,21 +174,25 @@ class ViewLoader {
 
     async handleSellTicket() {
         try {
+            const quantity = parseInt(document.getElementById('sell-quantity').value) || 1;
             const request = {
                 concertId: parseInt(document.getElementById('sell-concert-id').value),
-                seatNumber: document.getElementById('sell-seat-number').value,
                 buyerEmail: document.getElementById('sell-buyer-email').value.trim(),
-                paymentMethod: document.getElementById('sell-payment-method').value
+                paymentMethod: document.getElementById('sell-payment-method').value,
+                quantity: quantity
             };
-            await this.app.apiCall('/api/tickets/sell', {
+            const result = await this.app.apiCall('/api/tickets/sell', {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
-            app.showNotification('Билет успешно продан!', 'success');
+            const count = Array.isArray(result) ? result.length : 1;
+            app.showNotification(`Успешно продано билетов: ${count}`, 'success');
             document.getElementById('sell-ticket-form').reset();
-            // Reset concert dropdown to first option
+            // Reset concert dropdown to first option and quantity to 1
             const concertSelect = document.getElementById('sell-concert-id');
             if (concertSelect) concertSelect.selectedIndex = 0;
+            const quantityInput = document.getElementById('sell-quantity');
+            if (quantityInput) quantityInput.value = 1;
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
@@ -906,36 +910,35 @@ class ViewLoader {
             if (form) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    const seatNumber = document.getElementById('seat-number').value;
-                    if (!seatNumber || seatNumber < 1 || seatNumber > capacity) {
-                        alert(`Номер места должен быть от 1 до ${capacity}`);
-                        return;
-                    }
-                    await this.bookTicket(concertId, seatNumber);
+                    const quantityInput = document.getElementById('book-quantity');
+                    const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+                    await this.bookTicket(concertId, quantity);
                 };
             }
         }
     }
 
-    async bookTicket(concertId, seatNumber) {
-        if (!seatNumber) {
-            seatNumber = prompt('Введите номер места:');
-            if (!seatNumber) return;
-        }
-        
+    async bookTicket(concertId, quantity) {
+        // Seat number no longer required for dance floor model
         const minutes = 30; // Default reservation time
+        
+        if (!quantity || quantity < 1) {
+            quantity = 1;
+        }
         
         try {
             const request = {
                 concertId: concertId,
-                seatNumber: seatNumber,
-                minutes: minutes
+                seatNumber: null, // Not used in dance floor model
+                minutes: minutes,
+                quantity: quantity
             };
-            await this.app.apiCall('/api/customer/tickets/book', {
+            const result = await this.app.apiCall('/api/customer/tickets/book', {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
-            app.showNotification('Билет забронирован!', 'success');
+            const count = Array.isArray(result) ? result.length : 1;
+            app.showNotification(`Забронировано билетов: ${count}`, 'success');
             // Hide form if visible
             const container = document.getElementById('book-form-container');
             if (container) container.style.display = 'none';
@@ -944,23 +947,27 @@ class ViewLoader {
         }
     }
 
-    async purchaseTicket(concertId) {
-        const seatNumber = prompt('Введите номер места:');
-        if (!seatNumber) return;
-        
+    async purchaseTicket(concertId, quantity) {
         const paymentMethod = prompt('Способ оплаты (cash/card):', 'card');
+        if (!paymentMethod) return;
+        
+        if (!quantity || quantity < 1) {
+            quantity = 1;
+        }
         
         try {
             const request = {
                 concertId: concertId,
-                seatNumber: seatNumber,
-                paymentMethod: paymentMethod || 'card'
+                seatNumber: null, // Not used in dance floor model
+                paymentMethod: paymentMethod || 'card',
+                quantity: quantity
             };
-            await this.app.apiCall('/api/customer/tickets/purchase', {
+            const result = await this.app.apiCall('/api/customer/tickets/purchase', {
                 method: 'POST',
                 body: JSON.stringify(request)
             });
-            app.showNotification('Билет куплен!', 'success');
+            const count = Array.isArray(result) ? result.length : 1;
+            app.showNotification(`Куплено билетов: ${count}`, 'success');
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }

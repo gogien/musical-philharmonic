@@ -22,6 +22,9 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
     @Query("select count(t) from Ticket t where t.concert.id = :concertId and t.status = 'AVAILABLE'")
     long countAvailableByConcert(@Param("concertId") Integer concertId);
 
+    @Query("select count(t) from Ticket t where t.concert.id = :concertId and t.status in ('RESERVED', 'SOLD')")
+    long countReservedOrSoldByConcert(@Param("concertId") Integer concertId);
+
     @Query("select t from Ticket t where t.status = 'RESERVED' and t.reservationExpiration < :cutoff")
     List<Ticket> findExpiredReservations(@Param("cutoff") LocalDateTime cutoff);
 

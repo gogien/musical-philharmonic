@@ -54,8 +54,8 @@ public class CustomerController {
     }
 
     @PostMapping("/tickets/book")
-    @Operation(summary = "Book ticket (temporary reservation)")
-    public TicketResponse book(@RequestBody org.app.musical_philharmonic.dto.TicketBookRequest request,
+    @Operation(summary = "Book tickets (temporary reservation)")
+    public java.util.List<org.app.musical_philharmonic.dto.TicketResponse> book(@RequestBody org.app.musical_philharmonic.dto.TicketBookRequest request,
                                Authentication auth) {
         UUID buyerId = userRepository.findByEmail(auth.getName())
                 .map(u -> u.getId())
@@ -63,18 +63,20 @@ public class CustomerController {
         LocalDateTime exp = request.getMinutes() != null
                 ? LocalDateTime.now().plusMinutes(request.getMinutes())
                 : null;
-        return ticketService.book(request.getConcertId(), request.getSeatNumber(), buyerId, exp, auth.getName());
+        Integer quantity = request.getQuantity() != null ? request.getQuantity() : 1;
+        return ticketService.book(request.getConcertId(), request.getSeatNumber(), buyerId, exp, auth.getName(), quantity);
     }
 
     @PostMapping("/tickets/purchase")
-    @Operation(summary = "Purchase ticket")
-    public TicketResponse purchase(@RequestBody org.app.musical_philharmonic.dto.TicketPurchaseRequest request,
+    @Operation(summary = "Purchase tickets")
+    public java.util.List<org.app.musical_philharmonic.dto.TicketResponse> purchase(@RequestBody org.app.musical_philharmonic.dto.TicketPurchaseRequest request,
                                    Authentication auth) {
         UUID buyerId = userRepository.findByEmail(auth.getName())
                 .map(u -> u.getId())
                 .orElse(null);
+        Integer quantity = request.getQuantity() != null ? request.getQuantity() : 1;
         return ticketService.purchase(request.getConcertId(), request.getSeatNumber(),
-                buyerId, request.getPaymentMethod(), auth.getName());
+                buyerId, request.getPaymentMethod(), auth.getName(), quantity);
     }
 
     @PostMapping("/tickets/mine")

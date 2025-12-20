@@ -649,7 +649,7 @@ class App {
             const hall = await this.apiCall(`/api/halls/public/${concert.hallId}`, { method: 'GET' });
             
             const bookButton = this.currentUser && this.currentRole === 'CUSTOMER' ? `
-                <button class="btn-primary btn-large" onclick="viewLoader.showBookForm(${concert.id}, ${hall.capacity})">
+                <button class="btn-primary btn-large" onclick="app.showBookingForm(${concert.id}, ${hall.capacity})">
                     Забронировать билет
                 </button>
             ` : this.currentUser ? '' : `
@@ -671,13 +671,14 @@ class App {
                                 ${bookButton}
                             </div>
                             <div id="book-form-container" style="display: none; margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 8px;">
-                                <h3>Бронирование места</h3>
+                                <h3>Бронирование билетов</h3>
+                                <p id="book-availability-info" style="margin-bottom: 20px; color: #6b7280;">Вместимость зала: ${hall.capacity} мест. Загрузка доступных билетов...</p>
                                 <form id="book-ticket-form">
                                     <div class="form-group">
-                                        <label>Номер места (от 1 до ${hall.capacity}):</label>
-                                        <input type="number" id="seat-number" min="1" max="${hall.capacity}" required>
+                                        <label>Количество билетов:</label>
+                                        <input type="number" id="book-quantity" min="1" max="${hall.capacity}" value="1" required>
                                     </div>
-                                    <button type="submit" class="btn-primary">Забронировать</button>
+                                    <button type="submit" class="btn-primary">Забронировать билеты</button>
                                     <button type="button" class="btn" onclick="document.getElementById('book-form-container').style.display='none';">Отмена</button>
                                 </form>
                             </div>
@@ -691,20 +692,29 @@ class App {
             if (form) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
-                    const seatNumber = document.getElementById('seat-number').value;
-                    if (!seatNumber || seatNumber < 1 || seatNumber > hall.capacity) {
-                        alert(`Номер места должен быть от 1 до ${hall.capacity}`);
-                        return;
-                    }
                     try {
+                        const quantity = parseInt(document.getElementById('book-quantity').value) || 1;
+                        if (quantity < 1 || quantity > hall.capacity) {
+                            this.showNotification(`Количество должно быть от 1 до ${hall.capacity}`, 'error');
+                            return;
+                        }
                         const viewLoader = new ViewLoader(this);
-                        await viewLoader.bookTicket(concertId, parseInt(seatNumber));
+                        await viewLoader.bookTicket(concertId, quantity);
                         document.getElementById('book-form-container').style.display = 'none';
-                        this.showNotification('Билет успешно забронирован!', 'success');
+                        // Update availability after booking
+                        if (window.app) {
+                            await app.updateBookingAvailability(concertId, hall.capacity);
+                        }
                     } catch (err) {
                         this.showNotification(`Ошибка: ${err.message}`, 'error');
                     }
                 };
+            }
+            
+            // Store concert ID and hall capacity for availability updates
+            if (typeof window !== 'undefined') {
+                window.currentConcertId = concertId;
+                window.currentHallCapacity = hall.capacity;
             }
         } catch (err) {
             container.innerHTML = `<div class="error">Ошибка загрузки концерта: ${err.message}</div>`;
@@ -886,6 +896,68 @@ class App {
                 `).join('')}
             </div>
         `;
+    }
+}
+
+    async showBookingForm(concertId, hallCapacity) {
+        const container = document.getElementById('book-form-container');
+        if (container) {
+            container.style.display = 'block';
+            // Update availability info
+            await this.updateBookingAvailability(concertId, hallCapacity);
+            // Setup form handler
+            const form = document.getElementById('book-ticket-form');
+            if (form && !form.hasAttribute('data-handler-attached')) {
+                form.setAttribute('data-handler-attached', 'true');
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const quantity = parseInt(document.getElementById('book-quantity').value) || 1;
+                        if (quantity < 1 || quantity > hallCapacity) {
+                            this.showNotification(`Количество должно быть от 1 до ${hallCapacity}`, 'error');
+                            return;
+                        }
+                        const viewLoader = new ViewLoader(this);
+                        await viewLoader.bookTicket(concertId, quantity);
+                        document.getElementById('book-form-container').style.display = 'none';
+                        // Update availability after booking
+                        await this.updateBookingAvailability(concertId, hallCapacity);
+                    } catch (err) {
+                        this.showNotification(`Ошибка: ${err.message}`, 'error');
+                        // Update availability even on error (in case it changed)
+                        await this.updateBookingAvailability(concertId, hallCapacity);
+                    }
+                };
+            }
+        }
+    }
+
+    async updateBookingAvailability(concertId, hallCapacity) {
+        try {
+            const availabilityInfo = document.getElementById('book-availability-info');
+            if (!availabilityInfo) return;
+            
+            const data = await this.apiCall(`/api/concerts/public/${concertId}/available-tickets`, {
+                method: 'GET'
+            });
+            const available = data.availableTickets || 0;
+            availabilityInfo.textContent = `Вместимость зала: ${hallCapacity} мест. Доступно билетов: ${available}.`;
+            
+            // Update max value of quantity input
+            const quantityInput = document.getElementById('book-quantity');
+            if (quantityInput) {
+                quantityInput.max = Math.min(hallCapacity, available);
+                if (parseInt(quantityInput.value) > available) {
+                    quantityInput.value = Math.max(1, available);
+                }
+            }
+        } catch (err) {
+            const availabilityInfo = document.getElementById('book-availability-info');
+            if (availabilityInfo) {
+                availabilityInfo.textContent = `Вместимость зала: ${hallCapacity} мест. Не удалось загрузить доступные билеты.`;
+            }
+            console.error('Error fetching availability:', err);
+        }
     }
 }
 

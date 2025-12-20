@@ -4,6 +4,7 @@ public class TicketPurchaseRequest {
     private Integer concertId;
     private String seatNumber;
     private String paymentMethod = "card";
+    private Integer quantity = 1;
 
     public Integer getConcertId() {
         return concertId;
@@ -27,6 +28,14 @@ public class TicketPurchaseRequest {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
     }
 }
 

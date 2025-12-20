@@ -125,8 +125,8 @@ public class TicketController {
 
     @PostMapping("/sell")
     @PreAuthorize("hasAnyRole('ADMIN','CASHIER')")
-    @Operation(summary = "Sell ticket with payment method")
-    public TicketResponse sell(@RequestBody org.app.musical_philharmonic.dto.TicketSellRequest request) {
+    @Operation(summary = "Sell tickets with payment method")
+    public java.util.List<org.app.musical_philharmonic.dto.TicketResponse> sell(@RequestBody org.app.musical_philharmonic.dto.TicketSellRequest request) {
         if (request.getBuyerEmail() == null || request.getBuyerEmail().trim().isEmpty()) {
             throw new ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, 
@@ -137,9 +137,11 @@ public class TicketController {
                 .orElseThrow(() -> new ResponseStatusException(
                         org.springframework.http.HttpStatus.BAD_REQUEST, 
                         "Customer with email " + email + " not found. Email must be registered."));
-        return ticketService.purchase(request.getConcertId(), request.getSeatNumber(),
+        // Seat number not needed for dance floor model - capacity check is performed in purchase()
+        Integer quantity = request.getQuantity() != null ? request.getQuantity() : 1;
+        return ticketService.purchase(request.getConcertId(), null,
                 buyer.getId(), request.getPaymentMethod(),
-                request.getActorEmail() != null ? request.getActorEmail() : "cashier");
+                request.getActorEmail() != null ? request.getActorEmail() : "cashier", quantity);
     }
 
     @PostMapping("/{id}/return")

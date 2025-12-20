@@ -81,5 +81,12 @@ public class ConcertController {
     public ConcertResponse publicGet(@PathVariable Integer id) {
         return concertService.get(id);
     }
+
+    @GetMapping("/public/{id}/available-tickets")
+    @Operation(summary = "Get available tickets count for concert (public access)")
+    public java.util.Map<String, Object> getAvailableTickets(@PathVariable Integer id) {
+        long available = concertService.getAvailableTicketsCount(id);
+        return java.util.Map.of("concertId", id, "availableTickets", available);
+    }
 }
 
