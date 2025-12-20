@@ -24,18 +24,18 @@ public class AboutController {
         
         // Technology experience
         about.put("technologies", new String[]{
-            "Java 17 - опыт разработки на Java с использованием современных возможностей языка",
-            "Spring Boot - создание RESTful API, работа с Spring Security, JPA/Hibernate",
-            "PostgreSQL - проектирование и работа с реляционными базами данных",
-            "Maven - управление зависимостями и сборка проектов",
-            "JWT Authentication - реализация безопасной аутентификации",
-            "HTML/CSS/JavaScript - создание интерактивного пользовательского интерфейса",
-            "REST API - проектирование и реализация RESTful архитектуры",
-            "Swagger/OpenAPI - документирование API"
+            "Java 17 - полгода",
+            "Spring Boot - 2 месяца",
+            "PostgreSQL - 1 год",
+            "Maven - 1 год",
+            "JWT Authentication - полгода",
+            "HTML/CSS/JavaScript - 2 года",
+            "REST API - 1 год",
+            "Swagger/OpenAPI - 1 год"
         });
         
         // Project dates
-        about.put("projectStartDate", "2024-12-01"); // Replace with actual start date
+        about.put("projectStartDate", "2024-11-01"); 
         about.put("projectEndDate", LocalDate.now().toString());
         
         return about;

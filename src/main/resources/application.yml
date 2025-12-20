@@ -16,9 +16,6 @@ spring:
         format_sql: true
   mvc:
     throw-exception-if-no-handler-found: false
-  web:
-    resources:
-      static-locations: classpath:/static/
 
 server:
   port: 8080

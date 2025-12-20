@@ -90,27 +90,11 @@ class ViewLoader {
                 body: JSON.stringify(request)
             });
 
-            container.innerHTML = this.renderTicketsTable(data.content, true);
-            // Attach return button handlers after rendering
-            this.attachReturnButtonHandlers(container);
+            container.innerHTML = this.renderTicketsTable(data.content);
         } catch (err) {
             container.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
-            this.app.showNotification(`Ошибка загрузки билетов: ${err.message}`, 'error');
+            app.showNotification(`Ошибка загрузки концертов: ${err.message}`, 'error');
         }
-    }
-
-    attachReturnButtonHandlers(container) {
-        container.querySelectorAll('.return-btn').forEach(btn => {
-            btn.onclick = () => {
-                const id = btn.getAttribute('data-id');
-                if (id && id !== 'undefined' && id !== 'null') {
-                    this.handleReturnTicket(id);
-                } else {
-                    console.error('Invalid ID for return:', id);
-                    this.app.showNotification('Ошибка: не удалось определить ID билета', 'error');
-                }
-            };
-        });
     }
 
     // Cashier Views
@@ -476,7 +460,16 @@ class ViewLoader {
             
             closeModal();
             app.showNotification('Концерт сохранен!', 'success');
-            location.reload();
+            
+            // Reload the current table view while staying on profile page
+            const activeTab = document.querySelector('.tab-btn.active');
+            const container = document.getElementById('admin-content');
+            if (activeTab && container) {
+                await this.load(activeTab.dataset.view, container);
+            } else if (container) {
+                // Fallback: reload concerts table
+                await this.load('concerts', container);
+            }
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
@@ -593,6 +586,16 @@ class ViewLoader {
             
             closeModal();
             app.showNotification('Пользователь сохранен!', 'success');
+            
+            // Reload the current table view while staying on profile page
+            const activeTab = document.querySelector('.tab-btn.active');
+            const container = document.getElementById('admin-content');
+            if (activeTab && container) {
+                await this.load(activeTab.dataset.view, container);
+            } else if (container) {
+                // Fallback: reload users table
+                await this.load('users', container);
+            }
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
@@ -688,7 +691,16 @@ class ViewLoader {
             
             closeModal();
             app.showNotification('Зал сохранен!', 'success');
-            location.reload();
+            
+            // Reload the current table view while staying on profile page
+            const activeTab = document.querySelector('.tab-btn.active');
+            const container = document.getElementById('admin-content');
+            if (activeTab && container) {
+                await this.load(activeTab.dataset.view, container);
+            } else if (container) {
+                // Fallback: reload halls table
+                await this.load('halls', container);
+            }
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
@@ -768,7 +780,16 @@ class ViewLoader {
             
             closeModal();
             app.showNotification('Исполнитель сохранен!', 'success');
-            location.reload();
+            
+            // Reload the current table view while staying on profile page
+            const activeTab = document.querySelector('.tab-btn.active');
+            const container = document.getElementById('admin-content');
+            if (activeTab && container) {
+                await this.load(activeTab.dataset.view, container);
+            } else if (container) {
+                // Fallback: reload performers table
+                await this.load('performers', container);
+            }
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }
@@ -798,11 +819,10 @@ class ViewLoader {
         }
     }
 
-    renderTicketsTable(tickets, showReturnButton = false) {
+    renderTicketsTable(tickets) {
         if (!tickets || tickets.length === 0) {
             return '<p>Билеты не найдены</p>';
         }
-        const actionsHeader = showReturnButton ? '<th>Действия</th>' : '';
         return `
             <table class="data-table">
                 <thead>
@@ -813,54 +833,22 @@ class ViewLoader {
                         <th>Статус</th>
                         <th>Покупатель</th>
                         <th>Дата покупки</th>
-                        ${actionsHeader}
                     </tr>
                 </thead>
                 <tbody>
-                    ${tickets.map(t => {
-                        const statusText = t.status === 'AVAILABLE' ? 'Доступен' : 
-                                          t.status === 'RESERVED' ? 'Забронирован' : 
-                                          t.status === 'SOLD' ? 'Продан' : t.status;
-                        const canReturn = showReturnButton && (t.status === 'SOLD' || t.status === 'RESERVED');
-                        const actionsCell = showReturnButton ? 
-                            `<td class="actions">
-                                ${canReturn ? `<button class="btn-small return-btn" data-id="${t.id}">Вернуть</button>` : ''}
-                            </td>` : '';
-                        return `
+                    ${tickets.map(t => `
                         <tr>
                             <td>${t.id}</td>
                             <td>${t.concertId}</td>
-                            <td>${t.seatNumber || '-'}</td>
-                            <td>${statusText}</td>
+                            <td>${t.seatNumber}</td>
+                            <td>${t.status}</td>
                             <td>${t.buyerId || '-'}</td>
                             <td>${t.purchaseTimestamp ? new Date(t.purchaseTimestamp).toLocaleString('ru-RU') : '-'}</td>
-                            ${actionsCell}
                         </tr>
-                    `;
-                    }).join('')}
+                    `).join('')}
                 </tbody>
             </table>
         `;
-    }
-
-    async handleReturnTicket(id) {
-        const reason = prompt('Причина возврата:', 'customer request');
-        if (!reason) return;
-        
-        try {
-            await this.app.apiCall(`/api/customer/tickets/${id}/return`, {
-                method: 'POST',
-                body: JSON.stringify({ reason: reason })
-            });
-            this.app.showNotification('Билет возвращен', 'success');
-            // Reload the tickets table
-            const container = document.querySelector('.view-content');
-            if (container) {
-                await this.loadMyTickets(container);
-            }
-        } catch (err) {
-            this.app.showNotification(`Ошибка: ${err.message}`, 'error');
-        }
     }
 
     // Customer-specific methods

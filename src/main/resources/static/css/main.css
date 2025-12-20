@@ -339,6 +339,33 @@ header {
     margin-top: 40px;
 }
 
+.about-info-card {
+    background: #f9fafb;
+    border-radius: var(--radius);
+    padding: 40px;
+    margin-top: 32px;
+    border: 1px solid #e5e7eb;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.about-info-card p {
+    margin: 0 0 20px;
+    color: #4b5563;
+    line-height: 1.8;
+    font-size: 16px;
+}
+
+.about-info-card p:last-child {
+    margin-bottom: 0;
+}
+
+.about-info-card strong {
+    color: var(--text);
+    font-weight: 700;
+}
+
 .feature-card {
     background: #f9fafb;
     border-radius: var(--radius);
