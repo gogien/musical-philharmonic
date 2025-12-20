@@ -62,11 +62,14 @@ class App {
         try {
             const response = await fetch(endpoint, { ...defaultOptions, ...options });
             if (!response.ok) {
+                // Read response as text first, then try to parse as JSON
+                const text = await response.text();
                 let errorData;
                 try {
-                    errorData = await response.json();
+                    errorData = JSON.parse(text);
                 } catch (e) {
-                    errorData = { message: await response.text() || `HTTP ${response.status}` };
+                    // If not valid JSON, use text as message
+                    errorData = { message: text || `HTTP ${response.status}` };
                 }
                 this.showError(errorData, response.status);
                 throw new Error(errorData.message || `API Error: ${response.status}`);
@@ -273,14 +276,7 @@ class App {
                 <section class="hero">
                     <div class="hero-content">
                         <h1 class="hero-title">Добро пожаловать в Musical Philharmonic</h1>
-                        <p class="hero-sub">Онлайн-трансляции и концерты. Подключайтесь к событиям филармонии, бронируйте места и следите за новыми программами.</p>
                         ${authButtons}
-                        <div class="tags" style="margin-top: 24px;">
-                            <span class="tag">Классика</span>
-                            <span class="tag">Джаз</span>
-                            <span class="tag">Live</span>
-                            <span class="tag">Абонементы</span>
-                        </div>
                     </div>
                 </section>
                 <section class="features">

@@ -99,49 +99,76 @@ class ViewLoader {
 
     // Cashier Views
     async loadSellTicket(container) {
-        container.innerHTML = `
-            <div class="form-container">
-                <h2>Продать билет</h2>
-                <form id="sell-ticket-form">
-                    <div class="form-group">
-                        <label>Концерт ID:</label>
-                        <input type="number" id="sell-concert-id" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Номер места:</label>
-                        <input type="text" id="sell-seat-number" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Покупатель ID (опционально):</label>
-                        <input type="text" id="sell-buyer-id">
-                    </div>
-                    <div class="form-group">
-                        <label>Способ оплаты:</label>
-                        <select id="sell-payment-method">
-                            <option value="cash">Наличные</option>
-                            <option value="card">Карта</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-primary">Продать билет</button>
-                </form>
-            </div>
-        `;
-
-        const sellForm = document.getElementById('sell-ticket-form');
-        if (sellForm) {
-            sellForm.onsubmit = async (e) => {
-                e.preventDefault();
-                const rules = {
-                    'sell-concert-id': [{ required: true, number: true, min: 1 }],
-                    'sell-seat-number': [{ required: true, minLength: 1 }]
-                };
-                
-                if (!FormValidator.validateForm(sellForm, rules)) {
-                    return;
-                }
-                
-                await this.handleSellTicket();
+        container.innerHTML = '<div class="loading">Загрузка...</div>';
+        
+        try {
+            // Load concerts for dropdown
+            const concertsRequest = {
+                page: 0,
+                size: 1000, // Get all concerts
+                sort: 'date,asc'
             };
+            const concertsData = await this.app.apiCall('/api/customer/concerts/upcoming', {
+                method: 'POST',
+                body: JSON.stringify(concertsRequest)
+            });
+
+            const concertsOptions = concertsData.content && concertsData.content.length > 0
+                ? concertsData.content.map(concert => 
+                    `<option value="${concert.id}">${concert.title} - ${new Date(concert.date).toLocaleDateString('ru-RU')} ${concert.time}</option>`
+                ).join('')
+                : '<option value="">Нет доступных концертов</option>';
+
+            container.innerHTML = `
+                <div class="form-container">
+                    <h2>Продать билет</h2>
+                    <form id="sell-ticket-form">
+                        <div class="form-group">
+                            <label>Концерт:</label>
+                            <select id="sell-concert-id" required>
+                                <option value="">Выберите концерт</option>
+                                ${concertsOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Номер места:</label>
+                            <input type="text" id="sell-seat-number" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email покупателя (обязательно):</label>
+                            <input type="email" id="sell-buyer-email" required placeholder="email@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Способ оплаты:</label>
+                            <select id="sell-payment-method">
+                                <option value="cash">Наличные</option>
+                                <option value="card">Карта</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary">Продать билет</button>
+                    </form>
+                </div>
+            `;
+
+            const sellForm = document.getElementById('sell-ticket-form');
+            if (sellForm) {
+                sellForm.onsubmit = async (e) => {
+                    e.preventDefault();
+                    const rules = {
+                        'sell-concert-id': [{ required: true }],
+                        'sell-seat-number': [{ required: true, minLength: 1 }],
+                        'sell-buyer-email': [{ required: true, email: true }]
+                    };
+                    
+                    if (!FormValidator.validateForm(sellForm, rules)) {
+                        return;
+                    }
+                    
+                    await this.handleSellTicket();
+                };
+            }
+        } catch (err) {
+            container.innerHTML = `<div class="error">Ошибка загрузки формы: ${err.message}</div>`;
         }
     }
 
@@ -150,7 +177,7 @@ class ViewLoader {
             const request = {
                 concertId: parseInt(document.getElementById('sell-concert-id').value),
                 seatNumber: document.getElementById('sell-seat-number').value,
-                buyerId: document.getElementById('sell-buyer-id').value || null,
+                buyerEmail: document.getElementById('sell-buyer-email').value.trim(),
                 paymentMethod: document.getElementById('sell-payment-method').value
             };
             await this.app.apiCall('/api/tickets/sell', {
@@ -159,6 +186,9 @@ class ViewLoader {
             });
             app.showNotification('Билет успешно продан!', 'success');
             document.getElementById('sell-ticket-form').reset();
+            // Reset concert dropdown to first option
+            const concertSelect = document.getElementById('sell-concert-id');
+            if (concertSelect) concertSelect.selectedIndex = 0;
         } catch (err) {
             app.showNotification(`Ошибка: ${err.message}`, 'error');
         }

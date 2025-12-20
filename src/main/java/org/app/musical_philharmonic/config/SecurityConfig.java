@@ -37,6 +37,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/about",
+                                "/api/concerts/public/**",
+                                "/api/performers/public/**",
+                                "/api/halls/public/**",
                                 "/",
                                 "/index.html",
                                 "/404.html",
@@ -45,7 +48,8 @@ public class SecurityConfig {
                                 "/error.html",
                                 "/css/**",
                                 "/js/**",
-                                "/images/**"
+                                "/images/**",
+                                "/favicon.ico"
                         ).permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",

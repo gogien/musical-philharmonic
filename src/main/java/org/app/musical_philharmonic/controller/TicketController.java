@@ -127,8 +127,18 @@ public class TicketController {
     @PreAuthorize("hasAnyRole('ADMIN','CASHIER')")
     @Operation(summary = "Sell ticket with payment method")
     public TicketResponse sell(@RequestBody org.app.musical_philharmonic.dto.TicketSellRequest request) {
+        if (request.getBuyerEmail() == null || request.getBuyerEmail().trim().isEmpty()) {
+            throw new ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, 
+                    "Customer email is required");
+        }
+        String email = request.getBuyerEmail().trim();
+        User buyer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, 
+                        "Customer with email " + email + " not found. Email must be registered."));
         return ticketService.purchase(request.getConcertId(), request.getSeatNumber(),
-                request.getBuyerId(), request.getPaymentMethod(),
+                buyer.getId(), request.getPaymentMethod(),
                 request.getActorEmail() != null ? request.getActorEmail() : "cashier");
     }
 

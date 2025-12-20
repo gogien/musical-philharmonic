@@ -1,11 +1,9 @@
 package org.app.musical_philharmonic.dto;
 
-import java.util.UUID;
-
 public class TicketSellRequest {
     private Integer concertId;
     private String seatNumber;
-    private UUID buyerId;
+    private String buyerEmail;
     private String paymentMethod = "cash";
     private String actorEmail;
 
@@ -25,12 +23,12 @@ public class TicketSellRequest {
         this.seatNumber = seatNumber;
     }
 
-    public UUID getBuyerId() {
-        return buyerId;
+    public String getBuyerEmail() {
+        return buyerEmail;
     }
 
-    public void setBuyerId(UUID buyerId) {
-        this.buyerId = buyerId;
+    public void setBuyerEmail(String buyerEmail) {
+        this.buyerEmail = buyerEmail;
     }
 
     public String getPaymentMethod() {
