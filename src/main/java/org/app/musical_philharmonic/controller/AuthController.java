@@ -6,7 +6,9 @@ import org.app.musical_philharmonic.dto.AuthResponse;
 import org.app.musical_philharmonic.dto.RegisterRequest;
 import org.app.musical_philharmonic.entity.Role;
 import org.app.musical_philharmonic.entity.User;
+import org.app.musical_philharmonic.entity.UserSession;
 import org.app.musical_philharmonic.repository.UserRepository;
+import org.app.musical_philharmonic.repository.UserSessionRepository;
 import org.app.musical_philharmonic.security.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,15 +33,18 @@ import java.util.Map;
 public class AuthController {
 
     private final UserRepository userRepository;
+    private final UserSessionRepository userSessionRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
     public AuthController(UserRepository userRepository,
+                          UserSessionRepository userSessionRepository,
                           PasswordEncoder passwordEncoder,
                           AuthenticationManager authenticationManager,
                           JwtService jwtService) {
         this.userRepository = userRepository;
+        this.userSessionRepository = userSessionRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -62,6 +67,12 @@ public class AuthController {
 
         userRepository.save(user);
 
+        // Create a new session for this registration/login
+        UserSession session = new UserSession();
+        session.setUser(user);
+        session.setLoginTime(java.time.LocalDateTime.now());
+        userSessionRepository.save(session);
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
         String token = jwtService.generateToken(claims, user.getEmail());
@@ -78,10 +89,47 @@ public class AuthController {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        // Create a new session for this login
+        UserSession session = new UserSession();
+        session.setUser(user);
+        session.setLoginTime(java.time.LocalDateTime.now());
+        userSessionRepository.save(session);
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
         String token = jwtService.generateToken(claims, user.getEmail());
         return withCookie(token, user.getName(), user.getRole());
+    }
+    
+    @PostMapping("/logout")
+    @Operation(summary = "Logout and record session end time")
+    public ResponseEntity<Void> logout(org.springframework.security.core.Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            User user = userRepository.findByEmail(authentication.getName())
+                    .orElse(null);
+            if (user != null) {
+                // Find the most recent active session (without logout time) for this user
+                var sessions = userSessionRepository.findByUserIdOrderByLoginTimeDesc(user.getId());
+                sessions.stream()
+                        .filter(s -> s.getLogoutTime() == null)
+                        .findFirst()
+                        .ifPresent(session -> {
+                            session.setLogoutTime(java.time.LocalDateTime.now());
+                            userSessionRepository.save(session);
+                        });
+            }
+        }
+        // Clear the JWT cookie
+        ResponseCookie cookie = ResponseCookie.from("JWT", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .build();
     }
 
     @GetMapping("/me")

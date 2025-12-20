@@ -632,7 +632,14 @@ class App {
         await viewLoader.load(viewName, contentDiv);
     }
 
-    logout() {
+    async logout() {
+        try {
+            // Call logout endpoint to record session end time
+            await this.apiCall('/api/auth/logout', { method: 'POST' });
+        } catch (err) {
+            // Continue with logout even if API call fails
+            console.log('Logout API call failed, continuing with local logout');
+        }
         // Clear JWT cookie by setting it to expire
         document.cookie = 'JWT=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         this.currentUser = null;
@@ -817,9 +824,9 @@ class App {
                             <div class="stat-value">${data.totalUsers}</div>
                         </div>
                         <div class="stat-card">
-                            <h3>Среднее время ожидания</h3>
-                            <div class="stat-value">${Math.round(data.averageWaitTimeMinutes)} мин</div>
-                            <div class="stat-sub">(${data.averageWaitTimeHours.toFixed(2)} часов)</div>
+                            <h3>Среднее время сессии клиента</h3>
+                            <div class="stat-value">${Math.round(data.averageSessionMinutes)} мин</div>
+                            <div class="stat-sub">(${data.averageSessionHours.toFixed(2)} часов)</div>
                         </div>
                         <div class="stat-card">
                             <h3>Всего билетов</h3>

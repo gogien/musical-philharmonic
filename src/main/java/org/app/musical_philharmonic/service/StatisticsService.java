@@ -1,11 +1,12 @@
 package org.app.musical_philharmonic.service;
 
+import org.app.musical_philharmonic.entity.UserSession;
 import org.app.musical_philharmonic.repository.TicketRepository;
 import org.app.musical_philharmonic.repository.UserRepository;
+import org.app.musical_philharmonic.repository.UserSessionRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,10 +16,14 @@ public class StatisticsService {
 
     private final UserRepository userRepository;
     private final TicketRepository ticketRepository;
+    private final UserSessionRepository userSessionRepository;
 
-    public StatisticsService(UserRepository userRepository, TicketRepository ticketRepository) {
+    public StatisticsService(UserRepository userRepository, 
+                            TicketRepository ticketRepository,
+                            UserSessionRepository userSessionRepository) {
         this.userRepository = userRepository;
         this.ticketRepository = ticketRepository;
+        this.userSessionRepository = userSessionRepository;
     }
 
     public Map<String, Object> getStatistics() {
@@ -28,10 +33,10 @@ public class StatisticsService {
         long totalUsers = userRepository.count();
         stats.put("totalUsers", totalUsers);
         
-        // Average wait time (time from reservation to purchase)
-        double avgWaitTimeMinutes = calculateAverageWaitTime();
-        stats.put("averageWaitTimeMinutes", avgWaitTimeMinutes);
-        stats.put("averageWaitTimeHours", avgWaitTimeMinutes / 60.0);
+        // Average session duration for customer users (time they remain logged in)
+        double avgSessionMinutes = calculateAverageSessionDuration();
+        stats.put("averageSessionMinutes", avgSessionMinutes);
+        stats.put("averageSessionHours", avgSessionMinutes / 60.0);
         
         // Additional statistics
         long totalTickets = ticketRepository.count();
@@ -79,28 +84,20 @@ public class StatisticsService {
         return stats;
     }
 
-    private double calculateAverageWaitTime() {
-        List<org.app.musical_philharmonic.entity.Ticket> soldTickets = ticketRepository.findAll().stream()
-            .filter(t -> t.getStatus() == org.app.musical_philharmonic.entity.TicketStatus.SOLD)
-            .filter(t -> t.getReservationExpiration() != null && t.getPurchaseTimestamp() != null)
-            .toList();
+    private double calculateAverageSessionDuration() {
+        // Get all completed sessions for customer users
+        List<UserSession> completedSessions = userSessionRepository.findCompletedCustomerSessions();
         
-        if (soldTickets.isEmpty()) {
+        if (completedSessions.isEmpty()) {
             return 0.0;
         }
         
         long totalMinutes = 0;
         int count = 0;
         
-        for (org.app.musical_philharmonic.entity.Ticket ticket : soldTickets) {
-            // Calculate time from reservation creation (estimated from expiration - 30 min default)
-            // or use purchase timestamp if reservation was made
-            LocalDateTime reservationTime = ticket.getReservationExpiration() != null 
-                ? ticket.getReservationExpiration().minusMinutes(30) // Default reservation is 30 min
-                : ticket.getPurchaseTimestamp();
-            
-            if (ticket.getPurchaseTimestamp() != null && reservationTime != null) {
-                Duration duration = Duration.between(reservationTime, ticket.getPurchaseTimestamp());
+        for (UserSession session : completedSessions) {
+            if (session.getLoginTime() != null && session.getLogoutTime() != null) {
+                Duration duration = Duration.between(session.getLoginTime(), session.getLogoutTime());
                 if (duration.toMinutes() > 0) {
                     totalMinutes += duration.toMinutes();
                     count++;
