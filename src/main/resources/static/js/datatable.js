@@ -106,21 +106,56 @@ class DataTable {
         if (!this.config.searchFields || this.config.searchFields.length === 0) {
             return '<input type="text" id="table-search" placeholder="Поиск..." onkeyup="dataTable.handleSearch()">';
         }
+        
+        // Create a map of field keys to column labels for better placeholders
+        const fieldLabels = {};
+        this.config.columns.forEach(col => {
+            fieldLabels[col.key] = col.label;
+        });
+        
+        // Special label mappings for better UX
+        const labelMap = {
+            'concertName': 'Название концерта',
+            'buyerEmail': 'Покупатель (email)',
+            'ticketPrice': 'Цена',
+            'time': 'Время'
+        };
+        
         return `
             <div class="filter-group">
                 ${this.config.searchFields.map(field => {
+                    const label = labelMap[field] || fieldLabels[field] || field;
+                    
                     if (field === 'date' || field === 'startDate' || field === 'endDate') {
-                        return `<input type="date" id="filter-${field}" placeholder="${field}" onchange="dataTable.handleFilter()">`;
+                        const placeholder = field === 'startDate' ? 'Дата начала' : 
+                                          field === 'endDate' ? 'Дата окончания' : 'Дата';
+                        return `<input type="date" id="filter-${field}" placeholder="${placeholder}" onchange="dataTable.handleFilter()">`;
                     }
-                    if (field === 'role' || field === 'status') {
+                    if (field === 'role') {
                         return `<select id="filter-${field}" onchange="dataTable.handleFilter()">
-                            <option value="">Все</option>
+                            <option value="">Все роли</option>
                             <option value="ADMIN">ADMIN</option>
                             <option value="CASHIER">CASHIER</option>
                             <option value="CUSTOMER">CUSTOMER</option>
                         </select>`;
                     }
-                    return `<input type="text" id="filter-${field}" placeholder="${field}" onkeyup="dataTable.handleFilter()">`;
+                    if (field === 'status') {
+                        return `<select id="filter-${field}" onchange="dataTable.handleFilter()">
+                            <option value="">Все статусы</option>
+                            <option value="AVAILABLE">Доступен</option>
+                            <option value="RESERVED">Забронирован</option>
+                            <option value="SOLD">Продан</option>
+                            <option value="RETURNED">Возвращен</option>
+                        </select>`;
+                    }
+                    if (field === 'capacity' || field === 'concertId' || field === 'performerId' || 
+                        field === 'hallId' || field === 'seatNumber' || field === 'ticketPrice') {
+                        return `<input type="number" id="filter-${field}" placeholder="${label}" onkeyup="dataTable.handleFilter()">`;
+                    }
+                    if (field === 'time') {
+                        return `<input type="time" id="filter-${field}" placeholder="${label}" onchange="dataTable.handleFilter()">`;
+                    }
+                    return `<input type="text" id="filter-${field}" placeholder="${label}" onkeyup="dataTable.handleFilter()">`;
                 }).join('')}
             </div>
         `;
@@ -151,7 +186,25 @@ class DataTable {
             if (input) {
                 const value = input.value;
                 if (value) {
-                    this.filters[field] = value;
+                    // Convert number fields to integers or decimals
+                    if (field === 'capacity' || field === 'concertId' || field === 'performerId' || 
+                        field === 'hallId' || field === 'seatNumber') {
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue)) {
+                            this.filters[field] = numValue;
+                        } else {
+                            delete this.filters[field];
+                        }
+                    } else if (field === 'ticketPrice') {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                            this.filters[field] = numValue;
+                        } else {
+                            delete this.filters[field];
+                        }
+                    } else {
+                        this.filters[field] = value;
+                    }
                 } else {
                     delete this.filters[field];
                 }

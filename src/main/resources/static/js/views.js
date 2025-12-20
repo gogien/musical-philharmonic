@@ -277,7 +277,7 @@ class ViewLoader {
                 { key: 'time', label: 'Время', sortable: true },
                 { key: 'ticketPrice', label: 'Цена', sortable: true, formatter: (v) => v + ' ₽' }
             ],
-            searchFields: ['title', 'date', 'startDate', 'endDate', 'performerId', 'hallId'],
+            searchFields: ['title', 'date', 'ticketPrice', 'time'],
             onEdit: (item) => this.editConcert(item),
             onDelete: (item) => this.deleteConcert(item.id),
             onCreate: () => this.createConcert(),
@@ -292,14 +292,17 @@ class ViewLoader {
             title: 'Билеты',
             endpoint: '/api/tickets/search',
             columns: [
-                { key: 'id', label: 'ID', sortable: true },
-                { key: 'concertId', label: 'Концерт ID', sortable: true },
-                { key: 'seatNumber', label: 'Место', sortable: true },
-                { key: 'status', label: 'Статус', sortable: true },
-                { key: 'buyerId', label: 'Покупатель', sortable: true },
-                { key: 'paymentMethod', label: 'Оплата', sortable: true }
+                { key: 'concertName', label: 'Название концерта', sortable: false },
+                { key: 'status', label: 'Статус', sortable: true, formatter: (v) => {
+                    if (v === 'AVAILABLE') return 'Доступен';
+                    if (v === 'RESERVED') return 'Забронирован';
+                    if (v === 'SOLD') return 'Продан';
+                    if (v === 'RETURNED') return 'Возвращен';
+                    return v;
+                }},
+                { key: 'buyerEmail', label: 'Покупатель', sortable: false, formatter: (v) => v || '-' }
             ],
-            searchFields: ['concertId', 'buyerId', 'status'],
+            searchFields: ['concertName', 'status', 'buyerEmail'],
             onEdit: null, // Tickets are managed through sell/return actions
             onDelete: (item) => this.deleteTicket(item.id),
             onCreate: null, // Tickets are created through sell action
@@ -320,7 +323,7 @@ class ViewLoader {
                 { key: 'role', label: 'Роль', sortable: true },
                 { key: 'phone', label: 'Телефон', sortable: true }
             ],
-            searchFields: ['name', 'email', 'role'],
+            searchFields: ['email', 'role'],
             onEdit: (item) => this.editUser(item),
             onDelete: (item) => this.deleteUser(item.id),
             onCreate: () => this.createUser(),
@@ -340,7 +343,7 @@ class ViewLoader {
                 { key: 'capacity', label: 'Вместимость', sortable: true },
                 { key: 'location', label: 'Местоположение', sortable: true }
             ],
-            searchFields: [],
+            searchFields: ['name', 'capacity', 'location'],
             onEdit: (item) => this.editHall(item),
             onDelete: (item) => this.deleteHall(item.id),
             onCreate: () => this.createHall(),
@@ -711,7 +714,6 @@ class ViewLoader {
             try {
                 await this.app.apiCall(`/api/halls/${id}`, { method: 'DELETE' });
                 alert('Зал удален');
-                location.reload();
             } catch (err) {
                 app.showNotification(`Ошибка: ${err.message}`, 'error');
             }
@@ -800,7 +802,6 @@ class ViewLoader {
             try {
                 await this.app.apiCall(`/api/performers/${id}`, { method: 'DELETE' });
                 alert('Исполнитель удален');
-                location.reload();
             } catch (err) {
                 app.showNotification(`Ошибка: ${err.message}`, 'error');
             }
@@ -812,7 +813,6 @@ class ViewLoader {
             try {
                 await this.app.apiCall(`/api/tickets/${id}`, { method: 'DELETE' });
                 alert('Билет удален');
-                location.reload();
             } catch (err) {
                 app.showNotification(`Ошибка: ${err.message}`, 'error');
             }

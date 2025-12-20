@@ -50,6 +50,8 @@ public class TicketController {
         return ticketService.listTickets(
                 java.util.Optional.ofNullable(request.getConcertId()),
                 java.util.Optional.ofNullable(request.getBuyerId()),
+                java.util.Optional.ofNullable(request.getConcertName()),
+                java.util.Optional.ofNullable(request.getBuyerEmail()),
                 java.util.Optional.ofNullable(request.getStatus()),
                 pageable);
     }

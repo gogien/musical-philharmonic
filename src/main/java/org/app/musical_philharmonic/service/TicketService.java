@@ -41,15 +41,40 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public Page<TicketResponse> listTickets(java.util.Optional<Integer> concertId, java.util.Optional<UUID> buyerId, java.util.Optional<TicketStatus> status, Pageable pageable) {
-        Page<Ticket> page = ticketRepository.findAll(pageable);
-        if (concertId.isPresent()) {
-            page = ticketRepository.findByConcertId(concertId.get(), pageable);
-        } else if (buyerId.isPresent()) {
-            page = ticketRepository.findByBuyerId(buyerId.get(), pageable);
-        } else if (status.isPresent()) {
-            page = ticketRepository.findByStatus(status.get(), pageable);
-        }
+    public Page<TicketResponse> listTickets(java.util.Optional<Integer> concertId, 
+                                            java.util.Optional<UUID> buyerId,
+                                            java.util.Optional<String> concertName,
+                                            java.util.Optional<String> buyerEmail,
+                                            java.util.Optional<TicketStatus> status, 
+                                            Pageable pageable) {
+        // Use a single query that combines all filters
+        Page<Ticket> page = ticketRepository.findAll((root, query, cb) -> {
+            var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            
+            // Concert filter: prefer concertName over concertId
+            if (concertName.isPresent() && !concertName.get().trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("concert").get("title")), 
+                    "%" + concertName.get().trim().toLowerCase() + "%"));
+            } else if (concertId.isPresent()) {
+                predicates.add(cb.equal(root.get("concert").get("id"), concertId.get()));
+            }
+            
+            // Buyer filter: prefer buyerEmail over buyerId
+            if (buyerEmail.isPresent() && !buyerEmail.get().trim().isEmpty()) {
+                predicates.add(cb.like(cb.lower(root.get("buyer").get("email")), 
+                    "%" + buyerEmail.get().trim().toLowerCase() + "%"));
+            } else if (buyerId.isPresent()) {
+                predicates.add(cb.equal(root.get("buyer").get("id"), buyerId.get()));
+            }
+            
+            // Status filter
+            if (status.isPresent()) {
+                predicates.add(cb.equal(root.get("status"), status.get()));
+            }
+            
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        }, pageable);
+        
         return page.map(this::toResponse);
     }
 

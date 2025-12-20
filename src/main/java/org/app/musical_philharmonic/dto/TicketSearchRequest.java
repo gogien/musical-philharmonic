@@ -7,6 +7,8 @@ import java.util.UUID;
 public class TicketSearchRequest {
     private Integer concertId;
     private UUID buyerId;
+    private String concertName;
+    private String buyerEmail;
     private TicketStatus status;
     private Integer page = 0;
     private Integer size = 20;
@@ -26,6 +28,22 @@ public class TicketSearchRequest {
 
     public void setBuyerId(UUID buyerId) {
         this.buyerId = buyerId;
+    }
+
+    public String getConcertName() {
+        return concertName;
+    }
+
+    public void setConcertName(String concertName) {
+        this.concertName = concertName;
+    }
+
+    public String getBuyerEmail() {
+        return buyerEmail;
+    }
+
+    public void setBuyerEmail(String buyerEmail) {
+        this.buyerEmail = buyerEmail;
     }
 
     public TicketStatus getStatus() {

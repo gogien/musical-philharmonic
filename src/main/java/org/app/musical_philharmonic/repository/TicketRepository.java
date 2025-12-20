@@ -5,13 +5,14 @@ import org.app.musical_philharmonic.entity.TicketStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface TicketRepository extends JpaRepository<Ticket, Integer> {
+public interface TicketRepository extends JpaRepository<Ticket, Integer>, JpaSpecificationExecutor<Ticket> {
     Page<Ticket> findByConcertId(Integer concertId, Pageable pageable);
     Page<Ticket> findByBuyerId(java.util.UUID buyerId, Pageable pageable);
     Page<Ticket> findByStatus(TicketStatus status, Pageable pageable);
@@ -33,5 +34,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Integer> {
     Page<Ticket> findByConcertIdAndStatus(Integer concertId, TicketStatus status, Pageable pageable);
 
     Page<Ticket> findByPurchaseTimestampBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    @Query("SELECT t FROM Ticket t WHERE LOWER(t.concert.title) LIKE LOWER(CONCAT('%', :concertName, '%'))")
+    Page<Ticket> findByConcertNameContainingIgnoreCase(@Param("concertName") String concertName, Pageable pageable);
+
+    @Query("SELECT t FROM Ticket t WHERE t.buyer.email LIKE CONCAT('%', :buyerEmail, '%')")
+    Page<Ticket> findByBuyerEmailContainingIgnoreCase(@Param("buyerEmail") String buyerEmail, Pageable pageable);
 }
 
