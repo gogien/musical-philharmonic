@@ -3,6 +3,7 @@ package org.app.musical_philharmonic.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.app.musical_philharmonic.dto.TicketResponse;
+import org.app.musical_philharmonic.repository.TicketRepository;
 import org.app.musical_philharmonic.repository.UserRepository;
 import org.app.musical_philharmonic.service.ConcertService;
 import org.app.musical_philharmonic.service.TicketService;
@@ -12,10 +13,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
 @RestController
 @RequestMapping("/api/customer")
@@ -26,13 +32,16 @@ public class CustomerController {
     private final ConcertService concertService;
     private final UserRepository userRepository;
     private final TicketService ticketService;
+    private final TicketRepository ticketRepository;
 
     public CustomerController(ConcertService concertService,
                               UserRepository userRepository,
-                              TicketService ticketService) {
+                              TicketService ticketService,
+                              TicketRepository ticketRepository) {
         this.concertService = concertService;
         this.userRepository = userRepository;
         this.ticketService = ticketService;
+        this.ticketRepository = ticketRepository;
     }
 
     @PostMapping("/concerts/upcoming")
@@ -89,6 +98,26 @@ public class CustomerController {
                 .map(u -> u.getId())
                 .orElse(null);
         return ticketService.ticketsByBuyer(buyerId, pageable);
+    }
+
+    @PostMapping("/tickets/{id}/return")
+    @Operation(summary = "Return ticket (customer can only return their own tickets)")
+    public TicketResponse returnTicket(@PathVariable Integer id,
+                                       @RequestBody org.app.musical_philharmonic.dto.TicketReturnRequest request,
+                                       Authentication auth) {
+        UUID buyerId = userRepository.findByEmail(auth.getName())
+                .map(u -> u.getId())
+                .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "User not found"));
+        
+        // Verify that the ticket belongs to the current user
+        org.app.musical_philharmonic.entity.Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Ticket not found"));
+        
+        if (ticket.getBuyer() == null || !buyerId.equals(ticket.getBuyer().getId())) {
+            throw new ResponseStatusException(FORBIDDEN, "You can only return your own tickets");
+        }
+        
+        return ticketService.returnTicket(id, request.getReason(), auth.getName());
     }
 }
 

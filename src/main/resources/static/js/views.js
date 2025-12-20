@@ -90,11 +90,27 @@ class ViewLoader {
                 body: JSON.stringify(request)
             });
 
-            container.innerHTML = this.renderTicketsTable(data.content);
+            container.innerHTML = this.renderTicketsTable(data.content, true);
+            // Attach return button handlers after rendering
+            this.attachReturnButtonHandlers(container);
         } catch (err) {
             container.innerHTML = `<div class="error">Ошибка: ${err.message}</div>`;
-            app.showNotification(`Ошибка загрузки концертов: ${err.message}`, 'error');
+            this.app.showNotification(`Ошибка загрузки билетов: ${err.message}`, 'error');
         }
+    }
+
+    attachReturnButtonHandlers(container) {
+        container.querySelectorAll('.return-btn').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-id');
+                if (id && id !== 'undefined' && id !== 'null') {
+                    this.handleReturnTicket(id);
+                } else {
+                    console.error('Invalid ID for return:', id);
+                    this.app.showNotification('Ошибка: не удалось определить ID билета', 'error');
+                }
+            };
+        });
     }
 
     // Cashier Views
@@ -244,12 +260,16 @@ class ViewLoader {
             title: 'Билеты',
             endpoint: '/api/tickets/search',
             columns: [
-                { key: 'id', label: 'ID', sortable: true },
-                { key: 'concertId', label: 'Концерт ID', sortable: true },
-                { key: 'seatNumber', label: 'Место', sortable: true },
-                { key: 'status', label: 'Статус', sortable: true },
-                { key: 'buyerId', label: 'Покупатель', sortable: true },
-                { key: 'paymentMethod', label: 'Оплата', sortable: true }
+                { key: 'id', label: 'ID билета', sortable: true },
+                { key: 'concertName', label: 'Название концерта', sortable: false },
+                { key: 'status', label: 'Статус', sortable: true, formatter: (v) => {
+                    if (v === 'AVAILABLE') return 'Доступен';
+                    if (v === 'RESERVED') return 'Забронирован';
+                    if (v === 'SOLD') return 'Продан';
+                    return v || '-';
+                }},
+                { key: 'buyerEmail', label: 'Email покупателя', sortable: false },
+                { key: 'paymentMethod', label: 'Тип покупки', sortable: true, formatter: (v) => v === 'cash' ? 'Наличные' : v === 'card' ? 'Карта' : v || '-' }
             ],
             searchFields: ['concertId', 'buyerId', 'status'],
             onEdit: null, // Cashiers can't edit tickets directly
@@ -778,10 +798,11 @@ class ViewLoader {
         }
     }
 
-    renderTicketsTable(tickets) {
+    renderTicketsTable(tickets, showReturnButton = false) {
         if (!tickets || tickets.length === 0) {
             return '<p>Билеты не найдены</p>';
         }
+        const actionsHeader = showReturnButton ? '<th>Действия</th>' : '';
         return `
             <table class="data-table">
                 <thead>
@@ -792,22 +813,54 @@ class ViewLoader {
                         <th>Статус</th>
                         <th>Покупатель</th>
                         <th>Дата покупки</th>
+                        ${actionsHeader}
                     </tr>
                 </thead>
                 <tbody>
-                    ${tickets.map(t => `
+                    ${tickets.map(t => {
+                        const statusText = t.status === 'AVAILABLE' ? 'Доступен' : 
+                                          t.status === 'RESERVED' ? 'Забронирован' : 
+                                          t.status === 'SOLD' ? 'Продан' : t.status;
+                        const canReturn = showReturnButton && (t.status === 'SOLD' || t.status === 'RESERVED');
+                        const actionsCell = showReturnButton ? 
+                            `<td class="actions">
+                                ${canReturn ? `<button class="btn-small return-btn" data-id="${t.id}">Вернуть</button>` : ''}
+                            </td>` : '';
+                        return `
                         <tr>
                             <td>${t.id}</td>
                             <td>${t.concertId}</td>
-                            <td>${t.seatNumber}</td>
-                            <td>${t.status}</td>
+                            <td>${t.seatNumber || '-'}</td>
+                            <td>${statusText}</td>
                             <td>${t.buyerId || '-'}</td>
                             <td>${t.purchaseTimestamp ? new Date(t.purchaseTimestamp).toLocaleString('ru-RU') : '-'}</td>
+                            ${actionsCell}
                         </tr>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </tbody>
             </table>
         `;
+    }
+
+    async handleReturnTicket(id) {
+        const reason = prompt('Причина возврата:', 'customer request');
+        if (!reason) return;
+        
+        try {
+            await this.app.apiCall(`/api/customer/tickets/${id}/return`, {
+                method: 'POST',
+                body: JSON.stringify({ reason: reason })
+            });
+            this.app.showNotification('Билет возвращен', 'success');
+            // Reload the tickets table
+            const container = document.querySelector('.view-content');
+            if (container) {
+                await this.loadMyTickets(container);
+            }
+        } catch (err) {
+            this.app.showNotification(`Ошибка: ${err.message}`, 'error');
+        }
     }
 
     // Customer-specific methods
@@ -974,5 +1027,6 @@ class ViewLoader {
     }
 }
 
-const viewLoader = new ViewLoader(app);
+// Initialize viewLoader - app should be defined since app.js loads before this file
+let viewLoader;
 

@@ -212,7 +212,7 @@ class DataTable {
                 <td class="actions">
                     ${this.config.onEdit && this.app.currentRole === 'ADMIN' && idString ? `<button class="btn-small edit-btn" data-id="${idString}">Изменить</button>` : ''}
                     ${this.config.onDelete && this.app.currentRole === 'ADMIN' && idString ? `<button class="btn-small btn-danger delete-btn" data-id="${idString}">Удалить</button>` : ''}
-                    ${this.app.currentRole === 'CASHIER' && this.config.title === 'Билеты' && idString ? `<button class="btn-small return-btn" data-id="${idString}">Вернуть</button>` : ''}
+                    ${this.app.currentRole === 'CASHIER' && this.config.title === 'Билеты' && idString ? `<button class="btn-small return-btn" data-id="${idString}">Возврат</button>` : ''}
                 </td>
             </tr>
         `;
@@ -222,8 +222,9 @@ class DataTable {
     updatePagination(data) {
         document.getElementById('page-info').textContent = 
             `Страница ${data.number + 1} из ${data.totalPages} (Всего: ${data.totalElements})`;
-        document.getElementById('prev-btn').disabled = !data.first;
-        document.getElementById('next-btn').disabled = !data.last;
+        // Disable prev button when on first page, disable next button when on last page
+        document.getElementById('prev-btn').disabled = data.first;
+        document.getElementById('next-btn').disabled = data.last;
     }
 
     prevPage() {

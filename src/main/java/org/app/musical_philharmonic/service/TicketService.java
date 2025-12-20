@@ -40,6 +40,7 @@ public class TicketService {
         this.userRepository = userRepository;
     }
 
+    @Transactional(readOnly = true)
     public Page<TicketResponse> listTickets(java.util.Optional<Integer> concertId, java.util.Optional<UUID> buyerId, java.util.Optional<TicketStatus> status, Pageable pageable) {
         Page<Ticket> page = ticketRepository.findAll(pageable);
         if (concertId.isPresent()) {
@@ -229,8 +230,14 @@ public class TicketService {
     public TicketResponse toResponse(Ticket ticket) {
         TicketResponse resp = new TicketResponse();
         resp.setId(ticket.getId());
-        resp.setConcertId(ticket.getConcert() != null ? ticket.getConcert().getId() : null);
-        resp.setBuyerId(ticket.getBuyer() != null ? ticket.getBuyer().getId() : null);
+        if (ticket.getConcert() != null) {
+            resp.setConcertId(ticket.getConcert().getId());
+            resp.setConcertName(ticket.getConcert().getTitle());
+        }
+        if (ticket.getBuyer() != null) {
+            resp.setBuyerId(ticket.getBuyer().getId());
+            resp.setBuyerEmail(ticket.getBuyer().getEmail());
+        }
         resp.setSeatNumber(ticket.getSeatNumber());
         resp.setPurchaseTimestamp(ticket.getPurchaseTimestamp());
         resp.setStatus(ticket.getStatus());

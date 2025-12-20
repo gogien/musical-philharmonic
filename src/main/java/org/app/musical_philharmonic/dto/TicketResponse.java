@@ -8,7 +8,9 @@ import java.util.UUID;
 public class TicketResponse {
     private Integer id;
     private Integer concertId;
+    private String concertName;
     private UUID buyerId;
+    private String buyerEmail;
     private String seatNumber;
     private LocalDateTime purchaseTimestamp;
     private TicketStatus status;
@@ -33,12 +35,28 @@ public class TicketResponse {
         this.concertId = concertId;
     }
 
+    public String getConcertName() {
+        return concertName;
+    }
+
+    public void setConcertName(String concertName) {
+        this.concertName = concertName;
+    }
+
     public UUID getBuyerId() {
         return buyerId;
     }
 
     public void setBuyerId(UUID buyerId) {
         this.buyerId = buyerId;
+    }
+
+    public String getBuyerEmail() {
+        return buyerEmail;
+    }
+
+    public void setBuyerEmail(String buyerEmail) {
+        this.buyerEmail = buyerEmail;
     }
 
     public String getSeatNumber() {

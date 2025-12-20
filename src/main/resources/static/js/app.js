@@ -275,7 +275,7 @@ class App {
             container.innerHTML = `
                 <section class="hero">
                     <div class="hero-content">
-                        <h1 class="hero-title">Добро пожаловать в Musical Philharmonic</h1>
+                        <h1 class="hero-title">Добро пожаловать в 52harmonic</h1>
                         ${authButtons}
                     </div>
                 </section>
@@ -897,7 +897,6 @@ class App {
             </div>
         `;
     }
-}
 
     async showBookingForm(concertId, hallCapacity) {
         const container = document.getElementById('book-form-container');
